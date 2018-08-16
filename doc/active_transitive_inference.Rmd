@@ -1,0 +1,1431 @@
+---
+title             : "Active transitive inference: When learner control facilitates integrative encoding"
+shorttitle        : "Active transitive inference"
+
+author: 
+  - name          : "Douglas B. Markant"
+    affiliation   : "1"
+    corresponding : yes    # Define only one corresponding author
+    address       : "Department of Psychological Science, Colvard South Building, UNC Charlotte, 9201 University City Blvd., Charlotte, NC 28223"
+    email         : "dmarkant@uncc.edu"
+  
+affiliation:
+  - id            : "1"
+    institution   : "Department of Psychological Science, University of North Carolina at Charlotte"
+
+author_note: |
+  Douglas B. Markant, Department of Psychological Science, University of North Carolina at Charlotte.
+
+abstract: |
+  Enter abstract here. Each new line herein must be indented, like this line. (150 words)
+  
+keywords          : "active learning, transitive inference, inference, memory, information search"
+
+bibliography      : ["ati-references.bib"]
+header-includes:
+   - \usepackage{color}
+   - \usepackage{soul}
+   - \usepackage{float}
+   - \floatplacement{figure}{t} #make every figure with caption = h
+
+   
+figsintext        : yes
+figurelist        : no
+tablelist         : no
+footnotelist      : no
+lineno            : no
+mask              : no
+
+class             : "man"
+output            : papaja::apa6_pdf
+---
+
+```{r load_packages, include = FALSE}
+library("papaja")
+library(lme4)
+library(lmerTest)
+library(effects)
+library(plyr)
+library(dplyr)
+library(tidyr)
+library(psych)
+library(multcomp)
+library(stargazer)
+library(ggplot2)
+library(grid)
+library(gridExtra)
+library(cowplot)
+library(mlogit)
+library(emmeans)
+```
+
+
+```{r analysis_preferences}
+# Seed for random number generation
+set.seed(42)
+```
+
+```{r, include=FALSE}
+
+source('../analysis/CMCI.R')
+load("../analysis/confints.RData")
+
+# convert p-value to APA style string
+pstr = function (pvalue) {
+  if ((pvalue >= .001) & (pvalue < .01)) {
+    return(sprintf('= %.3f', round(pvalue, 3)))
+  } else if (pvalue > .01) {
+    return(sprintf('= %.2f', round(pvalue, 3)))
+  } else {
+    return('< .001')
+  }
+}
+
+# extract result for multiple comparison object
+mcstr = function(mc_obj, contr_name) {
+  sprintf('$\\beta$ = %.2f, *CI* = [%.2f, %.2f], *z* = %.2f, *p* %s', 
+          mc_obj$test$coefficients[contr_name],
+          mc_obj$confint[contr_name,'lwr'],
+          mc_obj$confint[contr_name,'upr'],
+          mc_obj$test$tstat[contr_name],
+          pstr(mc_obj$test$pvalues[contr_name]))
+}
+
+mcstrOR = function(mc_obj, or_obj, contr_name) {
+  sprintf('*OR* = %.2f, *CI* = [%.2f, %.2f], *z* = %.2f, *p* %s', 
+          or_obj[contr_name,'Estimate'],
+          or_obj[contr_name,'lwr'],
+          or_obj[contr_name,'upr'],
+          mc_obj$test$tstat[contr_name],
+          pstr(mc_obj$test$pvalues[contr_name]))
+}
+
+
+# Load data -----
+
+data = read.csv('../data_proc/testdata.csv')
+data = unite(data, 'pair_id', c('lower_id', 'higher_id'))
+
+# for now, only participants with OSpan data
+data = data[(!is.na(data$ospan_fta)),]
+
+data$sid = factor(data$sid)
+data$gender = factor(data$gender, labels=c('female', 'male'))
+data$session = factor(data$session, labels=c('test', 'retest'))
+data$cond = factor(data$cond)
+data$stim_type = factor(data$stim_type)
+data$correct = factor(data$correct)
+data$block = factor(data$block)
+data$endpoint = as.logical.factor(data$endpoint)
+data$pair_id = factor(data$pair_id)
+data$counterbalance = factor(data$counterbalance)
+
+# rescale and center some variables for regression model
+data$sc.distance = scale(data$distance)
+data$sc.distance_bin = scale(data$distance_bin)
+#data$sc.ospan_fta = scale(data$ospan_fta)
+data$sc.ospan_fta = scale(sqrt(data$ospan_fta))
+
+data$sc.sel_med_rt = scale(data$sel_med_rt)
+data$sc.sel_med_rt_overlap_feedback = scale(data$sel_med_rt_overlap_feedback)
+data$sc.sel_med_rt_other = scale(data$sel_med_rt_other)
+
+data$sc.prop_near = scale(data$sel_prop_near)
+data$sc.prop_near_when_overlap = scale(data$sel_prop_near_when_overlap)
+data$sc.prop_near_when_overlap_feedback = scale(data$sel_prop_near_when_overlap_feedback)
+data$sc.prop_near_when_overlap_nonfeedback = scale(data$sel_prop_near_when_overlap_nonfeedback)
+data$sc.prop_near_when_nonoverlap = scale(data$sel_prop_near_when_nonoverlap)
+
+data$sc.prop_near_neg2 = scale(data$sel_prop_near_neg2)
+data$sc.prop_near_neg1 = scale(data$sel_prop_near_neg1)
+data$sc.prop_near_pos1 = scale(data$sel_prop_near_pos1)
+data$sc.prop_near_pos2 = scale(data$sel_prop_near_pos2)
+
+# Selection data
+seldata = read.csv('../data_proc/selectiondata.csv')
+seldata$sid = factor(seldata$sid)
+seldata$gender = factor(seldata$gender, labels=c('female', 'male'))
+seldata$cond = factor(seldata$cond)
+seldata$stim_type = factor(seldata$stim_type)
+seldata$selected_ind = factor(seldata$selected_ind)
+
+#seldata$sc.ospan_fta = scale(seldata$ospan_fta)
+seldata$sc.ospan_fta = scale(sqrt(seldata$ospan_fta))
+
+seldata$overlap_type = NaN
+seldata[with(seldata, overlap=='False'),]$overlap_type = 0
+seldata[with(seldata, (overlap=='True') & (overlap_feedback=='False')),]$overlap_type = 1
+seldata[with(seldata, (overlap=='True') & (overlap_feedback=='True')),]$overlap_type = 2
+
+
+
+
+# Sample -----
+demodf = ddply(data, 'sid', function(x) {
+  c(age=x$age[1],
+    gender=x$gender[1])
+})
+demodf$gender = factor(demodf$gender, labels=c('female', 'male'))
+
+N = length(unique(data$sid))
+
+# Number of participants returning for second session
+N2 = sum(ddply(data, 'sid', function(x) {
+  nrow(x[x$session=='retest',]) > 0
+})$V1)
+
+
+ret = ddply(data, c('sid'), function(x) {
+  c(returned=nrow(x[x$session=='retest',]) > 0,
+    gender=x$gender[1],
+    ospan=x$ospan_fta[1],
+    acc=mean(as.numeric(x[x$session=='test',]$correct)))
+})
+
+
+# ospan
+returned_t_ospan = t.test(ret[ret$returned==0,]$ospan, ret[ret$returned==1,]$ospan)
+
+# overall accuracy on first test
+returned_t_acc = t.test(ret[ret$returned==0,]$acc, ret[ret$returned==1,]$acc)
+
+# gender distribution
+returned_chisq_gender = chisq.test(table(ret$returned, ret$gender))
+
+
+# if only returners
+#data = data[data$sid %in% ret[ret$returned==1,]$sid,]
+
+
+
+# Operation span -----
+agg = ddply(data, 'sid', function(x) {
+  c(ospan_fta=mean(x$ospan_fta),
+    ospan_math_acc=mean(x$ospan_math_acc))
+})
+desc.ospan = as.data.frame(describe(agg[c('ospan_fta', 'ospan_math_acc')]))
+
+data$ospan_bin = factor(data$ospan_fta >= desc.ospan['ospan_fta','median'], labels=c('low','high'))
+
+agg = ddply(data, 'sid', function(x) { c(ospan_bin=x$ospan_bin[1]) })
+N_ospan_low  = sum(agg$ospan_bin==1)
+N_ospan_high = sum(agg$ospan_bin==2)
+
+
+# Selections: Study allocation by position -----
+
+sdat = seldata[,c('sid', 'cond', 'selected_ind')]
+dat = mlogit.data(sdat,
+                  choice='selected_ind', id='sid')
+m1 = mlogit(selected_ind ~ 1 | 1 | 1,
+            data=dat)
+m2 = mlogit(selected_ind ~ 1 | cond | 1,
+            data=dat)
+lr.freq_by_ind = lrtest(m1,m2)
+
+
+# Selections: Proportion of near items (overall) -----
+
+agg = ddply(seldata[!is.na(seldata$near_distance),], c('sid', 'cond'), function(x) {
+  c(n=nrow(x), 
+    prop_near=sum(x$near==1)/nrow(x))
+})
+
+desc.prop_near_comb = ddply(agg, c('cond'), function(x) {
+  c(mn=mean(x$prop_near),
+    sd=sd(x$prop_near))
+})
+
+model.prop_near_comb = glmer(prop_near ~ cond + (1|sid), 
+                        data=agg, weights=n,
+                        family=binomial)
+contr = rbind("active - passive" = c(0, -1))
+mc.prop_near_comb = summary(glht(model.prop_near_comb, linfct=contr),
+                       test=adjusted('none'))
+OR.prop_near_comb = exp(confint(mc.prop_near_comb)$confint)
+
+
+
+# Selections: Proportion of near selections by trial type ----
+
+agg = ddply(seldata[!is.na(seldata$near_distance),], c('sid', 'near_distance', 'cond'), function(x) {
+  c(n=nrow(x), 
+    prop_near=sum(x$near==1)/nrow(x))
+})
+agg$sid = factor(agg$sid)
+agg$near_distance = factor(agg$near_distance)
+
+
+N_sel_near = sum(agg[(agg$cond=='active') & (agg$near_distance==1),]$prop_near > .5)
+
+
+ss = agg[with(agg, (near_distance==1) & (cond=='active')),]
+
+
+model.prop_near = glmer(prop_near ~ near_distance*cond + (1|sid), 
+                        data=agg, weights=n,
+                        family=binomial)
+
+active_neg2 = c(1,0,0,0,0,0,0,0)
+active_neg1 = c(1,1,0,0,0,0,0,0)
+active_pos1 = c(1,0,1,0,0,0,0,0)
+active_pos2 = c(1,0,0,1,0,0,0,0)
+yoked_neg2  = c(1,0,0,0,1,0,0,0)
+yoked_neg1  = c(1,1,0,0,1,1,0,0)
+yoked_pos1  = c(1,0,1,0,1,0,1,0)
+yoked_pos2  = c(1,0,0,1,1,0,0,1)
+
+contr = rbind("active - yoked | -2" = active_neg2 - yoked_neg2,
+              "active - yoked | -1" = active_neg1 - yoked_neg1,
+              "active - yoked | 1" = active_pos1 - yoked_pos1,
+              "active - yoked | 2" = active_pos2 - yoked_pos2,
+              "1 - (-1) | active" = active_pos1 - active_neg1)
+mc.prop_near = summary(glht(model.prop_near, linfct=contr),
+                       test=adjusted('none'))
+OR.prop_near = exp(confint(mc.prop_near)$confint)
+
+
+desc.prop_near = ddply(agg, c('cond', 'near_distance'), function(x) {
+  c(prop_near.mn=mean(x$prop_near))
+})
+desc.prop_near$near_distance = factor(desc.prop_near$near_distance)
+
+cis = CMCI(prop_near ~ near_distance + cond, agg, grouping.var="sid")
+cisdf = reshape2::melt(cis)
+cisdf = plyr::rename(cisdf,c('value'='cmci'))
+cisdf$near_distance = factor(cisdf$near_distance)
+
+agg2 = dplyr::left_join(desc.prop_near, cisdf)
+agg2$Condition = agg2$cond
+levels(agg2$Condition) = c('active', 'passive')
+
+
+pd = position_dodge(.3)
+plt.prop_near_overlap = ggplot(agg2) +
+  geom_line(aes(x=near_distance, y=prop_near.mn, group=Condition, color=Condition, linetype=Condition), position=pd, color='black') +
+  geom_errorbar(aes(x=near_distance, ymin=prop_near.mn-cmci, ymax=prop_near.mn+cmci, group=Condition), color='black', width=0, position=pd) +
+  geom_point(aes(x=near_distance, y=prop_near.mn, group=Condition, fill=Condition), shape=21, size=1.5, position=pd) +
+  scale_fill_manual(values=c('black', 'white')) +
+  scale_x_discrete("Distance of\nnear option") +
+  scale_y_continuous("% near") +
+  ggtitle('Proportion of\nnear selections') +
+  theme_apa() +
+  theme(axis.text.x = element_text(size=9, angle = 45, hjust = 1),
+        axis.text=element_text(size=9),
+        axis.title.x = element_text(size=11, margin = margin(5,0,0,0)),
+        axis.title.y = element_text(size=11, margin = margin(0,5,0,0)),
+        legend.title = element_text(size=11),
+        plot.title = element_text(size=11, face="bold", hjust=.5, margin=margin(0,0,.6,0, 'lines')),
+        panel.background = element_rect(fill = "white", colour = "grey20"))
+
+
+desc.prop_near = ddply(agg, c('cond', 'near_distance'), function(x) {
+  c(mn=mean(x$prop_near),
+    sd=sd(x$prop_near))
+})
+desc.prop_near$near_distance = factor(desc.prop_near$near_distance)
+
+
+
+# Is prop_near related to ospan?
+agg = ddply(seldata[!is.na(seldata$near_distance) & seldata$cond=='active',], c('sid', 'near_distance', 'sc.ospan_fta'), function(x) {
+  c(n=nrow(x), 
+    prop_near=sum(x$near==1)/nrow(x))
+})
+agg$near_distance = factor(agg$near_distance)
+
+
+model.prop_near_active = glmer(prop_near ~ near_distance*sc.ospan_fta + (1|sid), 
+                                 data=agg, 
+                                 weights=n, family=binomial)
+contr = rbind("ospan | neg2" = c(0, 0, 0, 0, 1, 0, 0, 0),
+              "ospan | neg1" = c(0, 0, 0, 0, 1, 1, 0, 0),
+              "ospan | pos1" = c(0, 0, 0, 0, 1, 0, 1, 0),
+              "ospan | pos2" = c(0, 0, 0, 0, 1, 0, 0, 1))
+mc.prop_near_active = summary(glht(model.prop_near_active, linfct=contr),
+                               test=adjusted('none'))
+OR.prop_near_active = exp(confint(mc.prop_near_active)$confint)
+
+
+#car::Anova(model.prop_near_active)
+
+
+
+
+
+
+# Selections: Average distance ----
+
+# agg = ddply(seldata[!is.na(seldata$near_distance),], c('sid', 'distance', 'cond'), function(x) {
+#   c(n=nrow(x))
+# })
+
+agg = ddply(seldata[!is.na(seldata$near_distance),], c('sid', 'cond'), function(x) {
+  c(mn_dist=mean(x$distance))
+})
+desc.sel_distance = describeBy(agg, 'cond')
+
+tt.sel_distance = t.test(agg[agg$cond=='active',]$mn_dist,
+       agg[agg$cond=='yoked',]$mn_dist,
+       paired=TRUE)
+
+
+
+
+# Selections: Response time -----
+
+agg = ddply(data, c('sid', 'cond', 'ospan_bin'), function(x) {
+  c(sel_rt=mean(x$sel_med_rt),
+    sel_rt_overlap_feedback=mean(x$sel_med_rt_overlap_feedback),
+    sel_rt_other=mean(x$sel_med_rt_other),
+    ospan=mean(x$sc.ospan_fta),
+    acc=mean(as.numeric(x$correct)-1))
+})
+
+desc.sel_rt = describeBy(agg, 'cond', digits=2)
+
+model.sel_rt = lmer(sel_rt ~ cond*ospan + (1|sid), data=agg)
+
+ef_active = c(0, -1, 0, 0)
+ef_ospan_active = c(0, 0, 1, 0)
+ef_ospan_yoked =  c(0, 0, 1, 1)
+
+contr = rbind("active - yoked" = ef_active,
+              "ospan | active" = ef_ospan_active,
+              "ospan | yoked" = ef_ospan_yoked)
+mc.sel_rt = summary(glht(model.sel_rt, linfct=contr),
+                       test=adjusted('none'))
+mc.sel_rt = confint(mc.sel_rt)
+
+
+# Selection response time by near distance ----
+
+agg = ddply(seldata[!is.na(seldata$near_distance),], c('sid', 'cond', 'near', 'near_distance'), function(x) {
+  c(sel_med_rt=median(x$rt))
+})
+agg$near = factor(agg$near)
+agg$near_distance = factor(agg$near_distance)
+agg$sid = factor(agg$sid)
+
+desc.sel_rt_overlap = ddply(agg, c('cond', 'near', 'near_distance'), function(x) {
+  c(mn=mean(x$sel_med_rt), sd=sd(x$sel_med_rt))
+})
+
+cis = CMCI(sel_med_rt ~ near_distance + near + cond, agg, grouping.var="sid")
+cisdf = reshape2::melt(cis)
+cisdf = plyr::rename(cisdf,c('value'='cmci'))
+cisdf$near_distance = factor(cisdf$near_distance)
+cisdf$near = factor(cisdf$near)
+
+agg2 = dplyr::left_join(desc.sel_rt_overlap, cisdf)
+agg2$Condition = agg2$cond
+levels(agg2$Condition) = c('active', 'passive')
+levels(agg2$near) = c('Selected far', 'Selected near')
+
+pd = position_dodge(.3)
+plt.sel_rt_overlap = ggplot(agg2) +
+  geom_line(aes(x=near_distance, y=mn, group=Condition, color=Condition, linetype=Condition), position=pd, color='black') +
+  geom_errorbar(aes(x=near_distance, ymin=mn-cmci, ymax=mn+cmci, group=Condition), color='black', width=0, position=pd) +
+  geom_point(aes(x=near_distance, y=mn, group=Condition, fill=Condition), shape=21, size=1.5, position=pd) +
+  facet_wrap(~ near) +
+  scale_fill_manual(values=c('black', 'white')) +
+  scale_x_discrete("Distance of\nnear option") +
+  scale_y_continuous("median RT (ms)") +
+  ggtitle('Selection RT') +
+  theme_apa() +
+  theme(axis.text.x = element_text(size=9, angle = 45, hjust = 1),
+        axis.text=element_text(size=9),
+        axis.title.x = element_text(size=11, margin = margin(5,0,0,0)),
+        axis.title.y = element_text(size=11, margin = margin(0,5,0,0)),
+        plot.title = element_text(size=11, face="bold", hjust=.5, margin=margin(0,0,.6,0, 'lines')),
+        legend.title = element_text(size=11),
+        legend.margin = margin(0,0,0,0),
+        panel.background = element_rect(fill = "white", colour = "grey20"),
+        strip.text.x = element_text(size=10, margin=margin(0.1, 0, 0.3, 0, "lines")),
+        strip.text.y = element_text(size=10, margin=margin(0, 0.2, 0, 0.6, "lines")))
+
+leg = get_legend(plt.sel_rt_overlap)
+
+prow = plot_grid(plt.prop_near_overlap + theme(legend.position='none'), 
+                 plt.sel_rt_overlap + theme(legend.position='none'),
+                 axis='tl',
+                 labels="AUTO", align='vh', rel_widths=c(1.3,2))
+
+plt.overlap = plot_grid(prow, leg, rel_widths=c(3,.4))
+
+
+# not finished yet...
+#model.sel_rt_overlap = lmer(sel_med_rt ~ near_distance*near*cond + (1|sid), 
+#     data=agg)
+
+
+
+#model.aov.sel_rt_overlap = anova(model.sel_rt_overlap)
+
+model.sel_rt_overlap = aov(sel_med_rt ~ near_distance*near*cond + Error(sid), data=agg)
+
+emm.sel_rt_overlap = emmeans::emmeans(model.sel_rt_overlap, 
+                 list(pairwise ~ near_distance | cond*near), 
+                 adjust = "tukey")
+
+
+# Test performance: Endpoints only -----
+
+testdata = data[data$endpoint==T,]
+
+agg = ddply(testdata, c('session', 'cond', 'sid'), function(x) {
+  c(acc=mean(as.numeric(x$correct)-1))
+})
+desc.acc_endpoint = ddply(agg, c('session', 'cond'), function(x) {
+  c(mn=mean(x$acc),
+    sd=sd(x$acc))
+})
+
+model.acc_endpoint = glmer(correct ~ 
+                             session*cond + 
+                             sc.ospan_fta*cond + 
+                             sc.distance_bin*cond + 
+                             (1|sid) + (1|pair_id), 
+                           data=testdata, family='binomial',
+                           control=glmerControl(optimizer="bobyqa",
+                                                optCtrl=list(maxfun=2e5)))
+summary(model.acc_endpoint)
+
+fe.acc_endpoint = exp(fixef(model.acc_endpoint))
+fe.acc_endpoint = merge(fe.acc_endpoint, exp(ci.acc_endpoint[names(fe.acc_endpoint),]), by='row.names')
+names(fe.acc_endpoint) = c('Predictor', 'OR', '95% CI-lower', '95% CI-upper')
+fe.acc_endpoint$Predictor = c('(Intercept)',
+  'Condition [passive]', 
+  'Condition [passive] x Distance',
+  'Condition [passive] x Operation span',
+  'Distance', 'Operation span', 'Session [retest]',
+  'Condition [passive] x Session [retest]')
+
+neworder = c('(Intercept)',
+  'Condition [passive]', 'Session [retest]', 'Distance', 'Operation span',
+  'Condition [passive] x Session [retest]', 'Condition [passive] x Distance',
+  'Condition [passive] x Operation span')
+fe.acc_endpoint = fe.acc_endpoint[with(fe.acc_endpoint, match(neworder, Predictor)),]
+
+
+ef_active_test     = c(0, 0, -1, 0, 0, 0, 0, 0)
+ef_active_retest   = c(0, 0, -1, 0, 0, -1, 0, 0)
+ef_retest_active   = c(0, 1, 0, 0, 0, 0, 0, 0)
+ef_retest_yoked    = c(0, 1, 0, 0, 0, 1, 0, 0)
+ef_distance_active = c(0, 0, 0, 0, 1, 0, 0, 0)
+ef_distance_yoked  = c(0, 0, 0, 0, 1, 0, 0, 1)
+ef_ospan_active    = c(0, 0, 0, 1, 0, 0, 0, 0)
+ef_ospan_yoked     = c(0, 0, 0, 1, 0, 0, 1, 0)
+
+# contrast at each distance
+dists = unique(data$sc.distance_bin)
+ef_active_test_d1  = c(0, 0, -1, 0, 0, 0, 0, -dists[1])
+ef_active_test_d2  = c(0, 0, -1, 0, 0, 0, 0, -dists[2])
+ef_active_test_d3  = c(0, 0, -1, 0, 0, 0, 0, -dists[3])
+
+ef_active_retest_d1  = c(0, 0, -1, 0, 0, -1, 0, -dists[1])
+ef_active_retest_d2  = c(0, 0, -1, 0, 0, -1, 0, -dists[2])
+ef_active_retest_d3  = c(0, 0, -1, 0, 0, -1, 0, -dists[3])
+
+contr = rbind("active - yoked | test" = ef_active_test,
+              "active - yoked | retest" = ef_active_retest,
+              "active - yoked | test, d1" = ef_active_test_d1,
+              "active - yoked | test, d2" = ef_active_test_d2,
+              "active - yoked | test, d3" = ef_active_test_d3,
+              "active - yoked | retest, d1" = ef_active_retest_d1,
+              "active - yoked | retest, d2" = ef_active_retest_d2,
+              "active - yoked | retest, d3" = ef_active_retest_d3,
+              "test - retest | active" = ef_retest_active,
+              "test - retest | yoked" = ef_retest_yoked,
+              "distance | active" = ef_distance_active,
+              "distance | yoked" = ef_distance_yoked,
+              "ospan | active" = ef_ospan_active,
+              "ospan | yoked" = ef_ospan_yoked)
+mc.acc_endpoint = summary(glht(model.acc_endpoint, linfct=contr),
+                       test=adjusted('none'))
+
+OR.acc_endpoint = exp(confint(mc.acc_endpoint)$confint)
+
+
+
+td = testdata
+agg = ddply(td, c('sid', 'ospan_bin', 'session', 'cond', 'distance_bin'), function(x) {
+  c(acc=mean(x$correct==1))
+})
+
+agg = ddply(agg, c('ospan_bin', 'session', 'cond', 'distance_bin'), function(x) {
+  c(acc.mn=mean(x$acc), acc.sd=sd(x$acc))
+})
+
+
+
+#library(reshape2)
+#library(tidyverse)
+
+td = testdata
+td$correct = as.numeric(td$correct)
+cis = CMCI(correct ~ cond*session + cond*distance_bin + ospan_bin, td, grouping.var="sid")
+cisdf = reshape2::melt(cis)
+cisdf = plyr::rename(cisdf,c('value'='cmci'))
+
+agg = dplyr::left_join(agg, cisdf)
+
+agg$distance_bin = factor(agg$distance_bin, labels=c('recall', 'near inference', 'far inference'))
+agg$Condition = agg$cond
+agg$session = factor(agg$session, labels=c('Test', 'Retest'))
+agg$ospan_bin = factor(agg$ospan_bin, labels=c('Low WMC', 'High WMC'))
+levels(agg$Condition) = c('active', 'passive')
+
+
+pd = position_dodge(.3)
+plt.acc_endpoint = ggplot(data=agg) +
+  geom_errorbar(aes(x=factor(distance_bin), ymin=acc.mn-cmci, ymax=acc.mn+cmci, group=Condition), color='black', width=0, position=pd) +
+  geom_line(aes(x=factor(distance_bin), y=acc.mn, group=Condition, linetype=Condition), position=pd, color='black') +
+  geom_point(aes(x=distance_bin, y=acc.mn, group=Condition, fill=Condition), shape=21, size=1.5, position=pd) +
+  scale_fill_manual(values=c('black', 'white')) +
+  facet_wrap(~ ospan_bin + session, ncol=4) +
+  scale_x_discrete("Distance") +
+  scale_y_continuous("% correct", limits=c(.55,.95)) +
+  ggtitle('Test accuracy (endpoint trials)') +
+  theme_apa() +
+  theme(aspect.ratio=1.5, 
+        axis.text.x = element_text(size=9, angle = 45, hjust = 1),
+        axis.text=element_text(size=9),
+        plot.title = element_text(size=11, face="bold", hjust=.5, margin=margin(0,0,.4,0, 'lines')),
+        plot.margin = unit(c(1, .5, 1, 0.5), "lines"),
+        panel.background = element_rect(fill = "white", colour = "grey20"),
+        panel.spacing = unit(.2,'cm'),
+        legend.margin = margin(0,0,0,0),
+        legend.title = element_text(size=11),
+        strip.text.x = element_text(size=10, margin=margin(0.1, 0, 0.3, 0, "lines")),
+        strip.text.y = element_text(size=10, margin=margin(0, 0.2, 0, 0.6, "lines")))
+
+
+
+
+# Test performance: Excluding endpoints -----
+
+testdata = data[data$endpoint==F,]
+
+agg = ddply(testdata, c('session', 'cond', 'sid'), function(x) {
+  c(acc=mean(as.numeric(x$correct)-1))
+})
+desc.acc = ddply(agg, c('session', 'cond'), function(x) {
+  c(mn=mean(x$acc),
+    sd=sd(x$acc))
+})
+
+
+model.acc = glmer(correct ~ 
+                    session*cond + 
+                    sc.ospan_fta*cond + 
+                    sc.distance_bin*cond + 
+                    (1|sid) + (1|pair_id), 
+                  data=testdata, family='binomial',
+                  control=glmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)))
+summary(model.acc)
+
+
+# nullmodel.acc = glm(correct ~ 1, 
+#                   data=testdata, family='binomial')
+# 
+# library(r2glmm)
+# library(nlme) # will be loaded automatically if omitted
+# 
+# model.acc.pql = glmmPQL(correct ~ 
+#                     session*cond + 
+#                     sc.ospan_fta*cond + 
+#                     sc.distance_bin*cond, 
+#                 random = c(~ 1|sid, ~ 1|pair_id),
+#                 family = binomial, data = testdata)
+# 
+# r2beta(model.acc.pql)
+
+
+
+# model.acc = glmer(correct ~ 
+#                     session*cond*sc.ospan_fta + 
+#                     sc.distance_bin*cond + 
+#                     (1|sid) + (1|pair_id), 
+#                   data=testdata, family='binomial',
+#                   control=glmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)))
+# summary(model.acc)
+
+
+
+#eff = effect('sc.ospan_fta', model.acc, partial.residuals=T)
+
+
+fe.acc = exp(fixef(model.acc))
+fe.acc = merge(fe.acc, exp(ci.acc[names(fe.acc),]), by='row.names')
+names(fe.acc) = c('Predictor', 'OR', '95% CI-lower', '95% CI-upper')
+fe.acc$Predictor = c('(Intercept)', 
+  'Condition [passive]', 'Condition [passive] x Distance',
+  'Condition [passive] x Operation span',
+  'Distance', 'Operation span', 'Session [retest]', 
+  'Condition [passive] x Session [retest]')
+
+neworder = c('(Intercept)', 
+  'Condition [passive]', 'Session [retest]', 'Distance', 'Operation span',
+  'Condition [passive] x Session [retest]', 'Condition [passive] x Distance',
+  'Condition [passive] x Operation span')
+fe.acc = fe.acc[with(fe.acc, match(neworder, Predictor)),]
+
+
+ef_active_test     = c(0, 0, -1, 0, 0, 0, 0, 0)
+ef_active_retest   = c(0, 0, -1, 0, 0, -1, 0, 0)
+ef_retest_active   = c(0, 1, 0, 0, 0, 0, 0, 0)
+ef_retest_yoked    = c(0, 1, 0, 0, 0, 1, 0, 0)
+ef_distance_active = c(0, 0, 0, 0, 1, 0, 0, 0)
+ef_distance_yoked  = c(0, 0, 0, 0, 1, 0, 0, 1)
+ef_ospan_active    = c(0, 0, 0, 1, 0, 0, 0, 0)
+ef_ospan_yoked     = c(0, 0, 0, 1, 0, 0, 1, 0)
+
+# contrast at each distance
+dists = unique(data$sc.distance_bin)
+ef_active_test_d1  = c(0, 0, -1, 0, 0, 0, 0, -dists[1])
+ef_active_test_d2  = c(0, 0, -1, 0, 0, 0, 0, -dists[2])
+ef_active_test_d3  = c(0, 0, -1, 0, 0, 0, 0, -dists[3])
+
+ef_active_retest_d1  = c(0, 0, -1, 0, 0, -1, 0, -dists[1])
+ef_active_retest_d2  = c(0, 0, -1, 0, 0, -1, 0, -dists[2])
+ef_active_retest_d3  = c(0, 0, -1, 0, 0, -1, 0, -dists[3])
+
+contr = rbind("active - yoked | test" = ef_active_test,
+              "active - yoked | retest" = ef_active_retest,
+              "active - yoked | test, d1" = ef_active_test_d1,
+              "active - yoked | test, d2" = ef_active_test_d2,
+              "active - yoked | test, d3" = ef_active_test_d3,
+              "active - yoked | retest, d1" = ef_active_retest_d1,
+              "active - yoked | retest, d2" = ef_active_retest_d2,
+              "active - yoked | retest, d3" = ef_active_retest_d3,
+              "test - retest | active" = ef_retest_active,
+              "test - retest | yoked" = ef_retest_yoked,
+              "distance | active" = ef_distance_active,
+              "distance | yoked" = ef_distance_yoked,
+              "ospan | active" = ef_ospan_active,
+              "ospan | yoked" = ef_ospan_yoked)
+mc.acc = summary(glht(model.acc, linfct=contr),
+                       test=adjusted('none'))
+
+OR.acc = exp(confint(mc.acc)$confint)
+
+
+
+# plot of performance after median split
+
+td = testdata
+agg = ddply(td, c('sid', 'ospan_bin', 'session', 'cond', 'distance_bin'), function(x) {
+  c(acc=mean(x$correct==1))
+})
+
+agg = ddply(agg, c('ospan_bin', 'session', 'cond', 'distance_bin'), function(x) {
+  c(acc.mn=mean(x$acc), acc.sd=sd(x$acc))
+})
+
+
+# td = testdata
+# agg = ddply(td, c('sid', 'ospan_bin', 'session', 'cond'), function(x) {
+#   c(acc=mean(x$correct==1))
+# })
+# 
+# agg = ddply(agg, c('ospan_bin', 'session', 'cond'), function(x) {
+#   c(acc.mn=mean(x$acc), acc.sd=sd(x$acc))
+# })
+
+
+
+#library(reshape2)
+#library(tidyverse)
+
+td = testdata
+td$correct = as.numeric(td$correct)
+cis = CMCI(correct ~ cond*session + cond*distance_bin + ospan_bin, td, grouping.var="sid")
+cisdf = reshape2::melt(cis)
+cisdf = plyr::rename(cisdf,c('value'='cmci'))
+
+agg = dplyr::left_join(agg, cisdf)
+
+agg$distance_bin = factor(agg$distance_bin, labels=c('recall', 'near inference', 'far inference'))
+agg$Condition = agg$cond
+agg$session = factor(agg$session, labels=c('Test', 'Retest'))
+agg$ospan_bin = factor(agg$ospan_bin, labels=c('Low WMC', 'High WMC'))
+levels(agg$Condition) = c('active', 'passive')
+
+
+pd = position_dodge(.3)
+plt.acc = ggplot(data=agg) +
+  geom_errorbar(aes(x=factor(distance_bin), ymin=acc.mn-cmci, ymax=acc.mn+cmci, group=Condition), color='black', width=0, position=pd) +
+  geom_line(aes(x=factor(distance_bin), y=acc.mn, group=Condition, linetype=Condition), position=pd, color='black') +
+  geom_point(aes(x=distance_bin, y=acc.mn, group=Condition, fill=Condition), shape=21, size=1.5, position=pd) +
+  scale_fill_manual(values=c('black', 'white')) +
+  facet_wrap(~ ospan_bin + session, ncol=4) +
+  scale_x_discrete("Distance") +
+  scale_y_continuous("% correct", limits=c(.55,.95)) +
+  ggtitle('Test accuracy') +
+  theme_apa() +
+  theme(aspect.ratio=1.5, 
+        axis.text.x = element_text(size=9, angle = 45, hjust = 1),
+        axis.text=element_text(size=9),
+        plot.title = element_text(size=11, face="bold", hjust=.5, margin=margin(0,0,.4,0, 'lines')),
+        plot.margin = unit(c(1, .5, 1, 0.5), "lines"),
+        panel.background = element_rect(fill = "white", colour = "grey20"),
+        panel.spacing = unit(.2,'cm'),
+        legend.margin = margin(0,0,0,0),
+        legend.title = element_text(size=11),
+        strip.text.x = element_text(size=10, margin=margin(0.1, 0, 0.3, 0, "lines")),
+        strip.text.y = element_text(size=10, margin=margin(0, 0.2, 0, 0.6, "lines")))
+  
+
+
+# add selection RT to the model
+#model.acc_sel_rt = update(model.acc, . ~ . + sc.sel_med_rt)
+#ef_sel_rt_active    = c(0, 0, 0, 0, 0, 1, 0, 0, 0, 0)
+#ef_sel_rt_yoked     = c(0, 0, 0, 0, 0, 1, 0, 0, 0, 1)
+
+#contr = rbind("sel_rt | active" = ef_sel_rt_active,
+#              "sel_rt | yoked" = ef_sel_rt_yoked)
+#mc.sel_rt = summary(glht(model.sel_rt, linfct=contr),
+#                       test=adjusted('none'))
+
+
+
+model.acc_split = glmer(correct ~ 
+                    session*cond*ospan_bin + 
+                    (1|sid) + (1|pair_id), 
+                  data=testdata, family='binomial',
+                  control=glmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)))
+summary(model.acc_split)
+
+
+ef_active_test_low    = c(1, 0, 0, 0, 0, 0, 0, 0)
+ef_active_retest_low  = c(1, 1, 0, 0, 0, 0, 0, 0)
+ef_active_test_high   = c(1, 0, 0, 1, 0, 0, 0, 0)
+ef_active_retest_high = c(1, 1, 0, 1, 0, 1, 0, 0)
+
+ef_yoked_test_low    = c(1, 0, 1, 0, 0, 0, 0, 0)
+ef_yoked_retest_low  = c(1, 1, 1, 0, 1, 0, 0, 0)
+ef_yoked_test_high   = c(1, 0, 1, 1, 0, 0, 1, 0)
+ef_yoked_retest_high = c(1, 1, 1, 1, 1, 1, 1, 1)
+
+ef_yoked_retest_by_ospan = (ef_yoked_test_low - ef_yoked_retest_low) - (ef_yoked_test_high - ef_yoked_retest_high)
+
+contr = rbind("active - yoked | test, low" = ef_active_test_low - ef_yoked_test_low,
+              "active - yoked | retest, low" = ef_active_retest_low - ef_yoked_retest_low,
+              "active - yoked | test, high" = ef_active_test_high - ef_yoked_test_high,
+              "active - yoked | retest, high" = ef_active_retest_high - ef_yoked_retest_high,
+              "retest - test | active, low" = ef_active_retest_low - ef_active_test_low,
+              "retest - test | active, high" = ef_active_retest_high - ef_active_test_high,
+              "retest - test | yoked, low" = ef_yoked_retest_low - ef_yoked_test_low,
+              "retest - test | yoked, high" = ef_yoked_retest_high - ef_yoked_test_high,
+              "yoked retest" = ef_yoked_retest_by_ospan)
+mc.acc_split = summary(glht(model.acc_split, linfct=contr),
+                       test=adjusted('none'))
+OR.acc_split = exp(confint(mc.acc_split)$confint)
+
+
+
+# Proportion near -----
+
+activedata = testdata[testdata$cond=='active',]
+
+model.acc_active = glmer(correct ~
+                      session +
+                      sc.ospan_fta +
+                      sc.distance_bin +
+                      sc.prop_near_neg2 +
+                      sc.prop_near_neg1 +
+                      sc.prop_near_pos1 +
+                      sc.prop_near_pos2 +  
+                    (1|sid) + (1|pair_id),
+                  data=activedata, family='binomial',
+                  control=glmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)))
+summary(model.acc_active)
+
+contr = rbind("prop_near_neg2" = c(0,0,0,0,1,0,0,0),
+              "prop_near_neg1" = c(0,0,0,0,0,1,0,0),
+              "prop_near_pos1" = c(0,0,0,0,0,0,1,0),
+              "prop_near_pos2" = c(0,0,0,0,0,0,0,1))
+mc.acc_active = summary(glht(model.acc_active, linfct=contr),
+                       test=adjusted('none'))
+
+OR.acc_active = exp(confint(mc.acc_active)$confint)
+
+
+
+# Response time during test: Excluding endpoints -----
+
+agg = ddply(testdata, c('sid', 'distance_bin',
+                        'sc.ospan_fta', 'session', 'cond', 'sc.distance_bin'), function(x) {
+  c(med_rt=median(x$rt))
+})
+agg$distance_bin = factor(agg$distance_bin, labels=c('recall', 'near inference', 'far inference'))
+
+
+desc.rt = ddply(agg, c('session', 'cond'), function(x) {
+  c(mn=round(mean(x$med_rt)),
+    sd=round(sd(x$med_rt)))
+})
+  
+model.rt = lmer(med_rt ~ 
+                    session*cond*sc.distance_bin + 
+                    sc.ospan_fta*cond + (1|sid), 
+                  data=agg)
+summary(model.rt)
+
+ef_active.test            = c(0, 0, -1,0, 0, 0, 0, 0, 0, 0)
+ef_active.retest          = c(0, 0, -1,0, 0,-1, 0, 0, 0, 0)
+ef_retest_active          = c(0, 1, 0, 0, 0, 0, 0, 0, 0, 0)
+ef_retest_yoked           = c(0, 1, 0, 0, 0, 1, 0, 0, 0, 0)
+ef_distance.active_test   = c(0, 0, 0, 1, 0, 0, 0, 0, 0, 0)
+ef_distance.active_retest = c(0, 0, 0, 1, 0, 0, 1, 0, 0, 0)
+ef_distance.yoked_test    = c(0, 0, 0, 1, 0, 0, 0, 1, 0, 0)
+ef_distance.yoked_retest  = c(0, 0, 0, 1, 0, 0, 0, 1, 0, 1)
+ef_ospan_active           = c(0, 0, 0, 0, 1, 0, 0, 0, 0, 0)
+ef_ospan_yoked            = c(0, 0, 0, 0, 1, 0, 0, 0, 1, 0)
+
+contr = rbind("active - yoked | test" = ef_active.test,
+              "active - yoked | retest" = ef_active.retest,
+              "test - retest | active" = ef_retest_active,
+              "test - retest | yoked" = ef_retest_yoked,
+              "distance | active, test" = ef_distance.active_test,
+              "distance | active, retest" = ef_distance.active_retest,
+              "distance | yoked, test" = ef_distance.yoked_test,
+              "distance | yoked, retest" = ef_distance.yoked_retest,
+              "ospan | active" = ef_ospan_active,
+              "ospan | yoked" = ef_ospan_yoked)
+mc.rt = summary(glht(model.rt, linfct=contr),
+                       test=adjusted('none'))
+mc.rt = confint(mc.rt)
+
+
+
+cis = CMCI(med_rt ~ distance_bin + cond + session, agg, grouping.var="sid")
+cisdf = reshape2::melt(cis)
+cisdf = plyr::rename(cisdf,c('value'='cmci'))
+
+agg2 = ddply(agg, c('session', 'cond', 'distance_bin'), function(x) {
+  c(mn=mean(x$med_rt))
+})
+agg2 = dplyr::left_join(agg2, cisdf)
+
+agg2$Condition = agg2$cond
+levels(agg2$Condition) = c('active', 'passive')
+agg2$session = factor(agg2$session, labels=c('Test', 'Retest'))
+#agg2$ospan_bin = factor(agg2$ospan_bin, labels=c('Low WM', 'High WM'))
+
+
+pd = position_dodge(.3)
+plt.rt = ggplot(data=agg2) +
+  geom_errorbar(aes(x=distance_bin, ymin=mn-cmci, ymax=mn+cmci, group=Condition), color='black', width=0, position=pd) +
+  geom_line(aes(x=factor(distance_bin), y=mn, group=Condition, linetype=Condition), position=pd, color='black') +
+  geom_point(aes(x=distance_bin, y=mn, group=Condition, fill=Condition), shape=21, size=1.5, position=pd) +
+  scale_fill_manual(values=c('black', 'white')) +
+  facet_wrap(~ session, ncol=4) +
+  scale_x_discrete("Distance") +
+  scale_y_continuous("Median RT (ms)") +
+  ggtitle('Test RT') +
+  theme_apa() +
+  theme(aspect.ratio=1.5, 
+        axis.text.x = element_text(size=9, angle = 45, hjust = 1),
+        axis.text=element_text(size=9),
+        plot.title = element_text(size=11, face="bold", hjust=.5, margin=margin(0,0,.4,0, 'lines')),
+        plot.margin = unit(c(1, .5, 1, 0.5), "lines"),
+        panel.background = element_rect(fill = "white", colour = "grey20"),
+        panel.spacing = unit(.2,'cm'),
+        legend.margin = margin(0,0,0,0),
+        legend.title = element_text(size=11),
+        strip.text.x = element_text(size=10, margin=margin(0.1, 0, 0.3, 0, "lines")),
+        strip.text.y = element_text(size=10, margin=margin(0, 0.2, 0, 0.6, "lines")))
+
+
+# Response time during test: Endpoints only -----
+
+testdata = data[data$endpoint==T,]
+
+agg = ddply(testdata, c('sid', 'distance_bin',
+                        'sc.ospan_fta', 'session', 'cond', 'sc.distance_bin'), function(x) {
+  c(med_rt=median(x$rt))
+})
+agg$distance_bin = factor(agg$distance_bin, labels=c('recall', 'near inference', 'far inference'))
+
+
+desc.rt_endpoint = ddply(agg, c('session', 'cond'), function(x) {
+  c(mn=round(mean(x$med_rt)),
+    sd=round(sd(x$med_rt)))
+})
+  
+model.rt_endpoint = lmer(med_rt ~ 
+                    session*cond*sc.distance_bin + 
+                    sc.ospan_fta*cond + (1|sid), 
+                  data=agg)
+summary(model.rt_endpoint)
+
+ef_active.test            = c(0, 0, -1,0, 0, 0, 0, 0, 0, 0)
+ef_active.retest          = c(0, 0, -1,0, 0,-1, 0, 0, 0, 0)
+ef_retest_active          = c(0, 1, 0, 0, 0, 0, 0, 0, 0, 0)
+ef_retest_yoked           = c(0, 1, 0, 0, 0, 1, 0, 0, 0, 0)
+ef_distance.active_test   = c(0, 0, 0, 1, 0, 0, 0, 0, 0, 0)
+ef_distance.active_retest = c(0, 0, 0, 1, 0, 0, 1, 0, 0, 0)
+ef_distance.yoked_test    = c(0, 0, 0, 1, 0, 0, 0, 1, 0, 0)
+ef_distance.yoked_retest  = c(0, 0, 0, 1, 0, 0, 0, 1, 0, 1)
+ef_ospan_active           = c(0, 0, 0, 0, 1, 0, 0, 0, 0, 0)
+ef_ospan_yoked            = c(0, 0, 0, 0, 1, 0, 0, 0, 1, 0)
+
+contr = rbind("active - yoked | test" = ef_active.test,
+              "active - yoked | retest" = ef_active.retest,
+              "test - retest | active" = ef_retest_active,
+              "test - retest | yoked" = ef_retest_yoked,
+              "distance | active, test" = ef_distance.active_test,
+              "distance | active, retest" = ef_distance.active_retest,
+              "distance | yoked, test" = ef_distance.yoked_test,
+              "distance | yoked, retest" = ef_distance.yoked_retest,
+              "ospan | active" = ef_ospan_active,
+              "ospan | yoked" = ef_ospan_yoked)
+mc.rt_endpoint = summary(glht(model.rt_endpoint, linfct=contr),
+                       test=adjusted('none'))
+mc.rt_endpoint = confint(mc.rt_endpoint)
+
+
+cis = CMCI(med_rt ~ distance_bin + cond + session, agg, grouping.var="sid")
+cisdf = reshape2::melt(cis)
+cisdf = plyr::rename(cisdf,c('value'='cmci'))
+
+agg2 = ddply(agg, c('session', 'cond', 'distance_bin'), function(x) {
+  c(mn=mean(x$med_rt))
+})
+agg2 = dplyr::left_join(agg2, cisdf)
+
+agg2$Condition = agg2$cond
+levels(agg2$Condition) = c('active', 'passive')
+agg2$session = factor(agg2$session, labels=c('Test', 'Retest'))
+#agg2$ospan_bin = factor(agg2$ospan_bin, labels=c('Low WM', 'High WM'))
+
+
+pd = position_dodge(.3)
+plt.rt_endpoint = ggplot(data=agg2) +
+  geom_errorbar(aes(x=distance_bin, ymin=mn-cmci, ymax=mn+cmci, group=Condition), color='black', width=0, position=pd) +
+  geom_line(aes(x=factor(distance_bin), y=mn, group=Condition, linetype=Condition), position=pd, color='black') +
+  geom_point(aes(x=distance_bin, y=mn, group=Condition, fill=Condition), shape=21, size=1.5, position=pd) +
+  scale_fill_manual(values=c('black', 'white')) +
+  facet_wrap(~ session, ncol=4) +
+  scale_x_discrete("Distance") +
+  scale_y_continuous("Median RT (ms)") +
+  ggtitle('Test RT') +
+  theme_apa() +
+  theme(aspect.ratio=1.5, 
+        axis.text.x = element_text(size=9, angle = 45, hjust = 1),
+        axis.text=element_text(size=9),
+        plot.title = element_text(size=11, face="bold", hjust=.5, margin=margin(0,0,.4,0, 'lines')),
+        plot.margin = unit(c(1, .5, 1, 0.5), "lines"),
+        panel.background = element_rect(fill = "white", colour = "grey20"),
+        panel.spacing = unit(.2,'cm'),
+        legend.margin = margin(0,0,0,0),
+        legend.title = element_text(size=11),
+        strip.text.x = element_text(size=10, margin=margin(0.1, 0, 0.3, 0, "lines")),
+        strip.text.y = element_text(size=10, margin=margin(0, 0.2, 0, 0.6, "lines")))
+```
+
+How does the opportunity to control a learning experience alter subsequent memory of it?
+Recent research has shown that active control over learning enhances episodic memory for experienced material compared to passive learners who observe the same information [@markant2014deconstructing; @voss2010hippocampal].
+This enhancement can arise from a number of mechanisms, including improved attentional coordination, metacognitive monitoring, or changes in encoding associated with volitional control [for a review, see @markant2016enhanced].
+
+It is less clear how active control affects the integration of studied material into flexible, generalizable knowledge. 
+Previous comparisons of active and passive study have focused on memorization of independent, unrelated items (e.g., lists of paired associates).
+<!-- ; although see studies of spatial memory, @chrastil2012active]. -->
+Other work has revealed improved generalization from active information selection when learning categorical rules [@markant2014select] or causal relationships [@Steyvers:2003vk].
+However, these studies cannot answer a crucial question about the cause of these advantages: Do they reflect better memory for experienced information itself (which then supports generalization later on) or the formation of relational knowledge that abstracts away from that experience?
+<!-- \hl{In order to understand the broader impact of active control it is important to disentangle its effects on episodic memory for experienced information from its effects on how that information is integrated into flexible, generalizable knowledge.} -->
+<!-- These outcomes reflect two learning objectives that are both essential to real-world educational contexts in which active control of learning is increasingly seen as a necessary component. -->
+Following @zeithamova2012hippocampus, these alternatives can be mapped onto two types of memory formation: *elemental encoding* of stimuli or associations that are directly experienced, and *integrative encoding* through which disparate study episodes are bound together into a unified representation.
+Existing research has established that active control enhances elemental encoding in a variety of contexts, but its impact on integrative encoding remains unclear. 
+
+The present study examined the effects of active control in a well-known example of generalization from memory: transitive inference (TI).
+In TI people learn about an ordered hierarchy (e.g., A < B < C) by studing premises comprised of adjacent items (e.g., A < B, B < C).
+They are then tested on their memory for studied pairs (*recall trials*; e.g., A ? B) and their ability to infer relationships between items that were never experienced together (*inference trials*; e.g., A ? C). Transitive inference is a fundamental building block of reasoning and has been the subject of a wealth of past research, yet it has always been studied under passive conditions in control is absent. 
+<!-- which learners cannot control the order in which premises are experienced. -->
+This study introduces a novel *active transitive inference* task in which participants chose which premises to study during learning.
+Their goal was to learn the "chain of command" at a set of 9-person companies, where each premise included an employee and their direct supervisor (represented by face images).
+In a passive control condition participants experienced the same procedure but made no study decisions.
+
+Based on prior work active selection was expected to improve recall of studied premises relative to passive study.
+Active control was also predicted to improve accuracy on inference trials, but this advantage might arise from two distinct mechanisms.
+Enhanced elemental encoding of premises should bolster retrieval during inference, allowing participants to reason across overlapping pairs.
+Alternatively, active control may enhance integrative encoding during study, aiding the formation of a unified representation of the hierachy.
+Importantly, these processes predict distinct relationships between performance and the distance between test items (see below), making TI ideally suited to examine how learner control changes the representation of studied material.
+
+## Elemental vs. integrative encoding in transitive inference
+
+<!-- Making transitive inferences from memory involves comparing items that have never been experienced together but are linked by studied pairs. -->
+It has long been recognized that multiple mechanisms can support TI, which for the present purposes can be distinguished by their dependence on elemental or integrative encoding.
+Elemental encoding-based inference occurs by reactivating studied premises and reasoning across overlapping relations at test [@kumaran2012generalization].
+In this case, successful inference hinges on robust encoding of studied pairs to ensure later retrieval.
+Elemental encoding-based inference implies that greater distances between test items will lengthen response times since more intervening pairs must be traversed, and decrease accuracy since there are more opportunities for retrieval errors along the way.
+
+In contrast, integrative encoding-based accounts of TI postulate the formation of a unified representation during study [@dusek1997hippocampus; @hummel2001process; @shohamy2008integrating; @zeithamova2010flexible].
+By combining information from studied pairs, people induce a spatial [@de1965social; @huttenlocher1968constructing] or propositional [@hummel2001process; @trabasso1975representation] representation in which items are mapped onto an integrated ordinal dimension.
+Inference then simply entails comparing the positions of any two items along that dimension.
+Importantly, accuracy should *increase* (and response time decrease) with inferential distance, as items that are further apart on that latent dimension are easier to distinguish.
+Such *symbolic distance effects* are a hallmark of integrative encoding [@acuna2002cognitive; @moyer1967time].
+
+Although alternative forms of associative or reinforcement learning may also support TI [@von1991transitive; @frank2005logic], the construction of a propositional representation is especially likely when participants are aware there is an underlying hierarchy [@lazareva2010nonverbal; @moses2006investigation].
+Accuracy is also higher among participants who report post-task awareness of the hierarchy [@martin2004transitive], who are informed prior to training [@greene2001relational; @libben2008role; @kumaran2013transitivity; @smith2005declarative], or when stimuli evoke hierarchical schemas [@kumaran2013schema; @moses2010relational].
+The use of propositional representations is also supported by evidence that inference depends on working memory capacity (WMC) [@titone2004transitive; @fales2003working], particularly when participants are aware of the hierarchy [@libben2008role].
+<!-- This is consistent with evidence that frontal dementia [@waltz2004relational] and damage to lateral prefrontal cortex [@wendelken2010transitive] impair the coordination of premises during TI. -->
+In sum, constructing an integrated representation is typically associated with superior generalization, but also depends on explicit awareness and incurs cognitive costs.
+
+<!-- There has been considerable debate about the nature of the representation that is formed during study in TI. -->
+<!-- Associative or reinforcement learning can also support TI and provide an alternative explanation for symbolic distance effects [@leo2008awareness; @von1991transitive; @frank2003transitivity; @frank2005logic]. -->
+<!-- An important influence on the kind of representation is whether participants are aware of the hierarchical structure to be learned.  -->
+<!-- Greater awareness is also associated with errors that are inconsistent with associative or reinforcement accounts [@lazareva2010nonverbal; @moses2006investigation]. -->
+
+
+## Learner control and integrative encoding
+
+Transitive inference is an ideal setting to examine whether active control has broader benefits for memory formation beyond enriched elemental encoding of the study experience.
+A principal reason to expect enhanced integrative encoding is that people may use their present knowledge of the hierarchy to direct their own learning.
+<!-- One reason to expect enhanced integrative encoding is if the opportunity to select pairs causes people to construct an integrated representation as they learn. -->
+By assessing what they already know, learners may better evaluate which option will be informative and, in turn, more effectively allocate their study time.
+At the same time, this process might involve additional demands that depend on individual differences in working memory capacity.
+To evaluate this prediction a measurement of operation span was included in addition to the TI task.
+
+<!-- The first is that the opportunity to select premise pairs leads to a metacognitive decision making process that is absent in comparatively passive conditions.  -->
+<!-- For instance, when faced with two items from the hierarchy, a learner might attempt to retrieve from memory the corresponding superordinate item in each premise pair.  -->
+<!-- These retrieval attempts should lead to enhanced elemental encoding, either due to test-potentiated learning [] or because it allows the learner to allocate effort to pairs that are less well-learned. -->
+
+The active TI task was also designed to explore how people decide to select premises.
+Passive training often incorporates scaffolding whereby overlapping pairs are experienced in direct succession because it is easier to learn than random presentation [@halford1984can; @waltz2004relational].
+If studying nearby premises aids relational integration, active learners may similarly benefit from choosing such options.
+Each active selection therefore involved a choice between a *near* and *far* option which differed in their distance from the pair studied on the previous trial. 
+<!-- This made it possible to test for a selection preference and its relationship to inferential accuracy. -->
+
+# Experiment
+
+The methods described below were approved by the Institutational Review Board at UNC Charlotte (IRB #17-0405).
+
+## Participants 
+
+*N* = `r N` participants (`r sum(demodf$gender=='female')` women; age: *M* = `r round(mean(demodf$age, na.rm=T), 2)` years, *SD* = `r round(sd(demodf$age, na.rm=T), 2)`) were recruited from the student population at UNC Charlotte.
+The sample size was chosen prior to the experiment based on a target of 25 participants for each of the four counterbalancing conditions.
+Participants received either course credit or $8 ($4 per session) as compensation for participating in the study. 
+All participants received an incentive payment based on their performance in the first test session ranging from \$0 (< 50% correct) to \$5 (90--100% correct).
+Payments were made in the form of Amazon gift cards.
+*N* = `r N2` participants (`r round(100*(N2/N))`%) returned for the second session. 
+
+## Materials
+
+Face stimuli were obtained from the 10k US Adult Faces Database [@bainbridge2013intrinsic], a collection of images from Google Images designed to be a representative sample of the US adult population.
+The database includes subjective ratings of each face on a number of attributes, including judgments of perceived age, emotional affect, and memorability.
+For each sex, the stimulus set was filtered to include only faces that were non-famous and which had mean ratings within a 1-point interval centered on the midpoint of the rating scale for perceived age, emotional affect, and memorability.
+Thirty-six images (18 male, 18 female) were manually chosen from the filtered set to ensure high image quality and the absence of other distinctive features (e.g., jewelry, background objects).
+Two hierarchies were generated for each participant by randomly sampling 18 stimuli (9 male faces, 9 female faces).
+
+## Procedure
+
+There were two sessions. 
+In the first session, participants completed the transitive inference task followed by the operation span task. The second session occurred 6-8 days after the first session and included only a second run of the test phases from the transitive inference task. 
+
+```{r fig.cap='Transitive inference task. Participants learned about the "chain of command" at two 9-person companies, each made up of all men or all women (only one example shown here). In each learning trial two individuals were presented as options. One person was selected either through free choice (active condition) or predetermined choice (passive condition) to receive feedback about their direct supervisor. In each test trial participants decided which of two individuals was ranked higher in the company, with three types of trials depending on the distance between items in the hierarchy. \\label{task}'}
+knitr::include_graphics('figures/design.pdf')
+```
+
+### Transitive inference task. 
+
+The transitive inference task (Figure \ref{task}) used a within-subjects design with two rounds.
+Participants learned about one 9-item hierarchy in the active condition and a second 9-item hierarchy in the passive condition.
+Each hierarchy was composed of all female faces or all male faces in order to reduce interference between study conditions.
+The order of conditions and mapping of stimulus sex to condition were counterbalanced across participants.
+Each round was comprised of a learning phase (56 trials) followed by a test phase (72 trials).
+
+Participants were instructed that the task involved learning about the "chain of command" at two different companies.
+At the start of each round all 9 images from the to-be-learned hierarchy were presented in a horizontal array in random order.
+The instructions included an example of a 3-item hierarchy in which participants learned about two premise pairs (person A < person B, person B < person C) and were asked to infer the transitive relation (person A < person C).
+All participants were therefore aware of the hierarchical nature of the stimuli and were explicitly instructed to learn to judge the relative rank of individuals in the company.
+
+#### Learning phase.
+
+The learning phase involved a series of choices between two options corresponding to non-adjacent items in the present hierarchy (excluding the highest item in the hierarchy, which had no superordinate item and was never presented as a choice option).
+The options on the first learning trial were any two non-adjacent items sampled at random.
+On all subsequent trials, option sets were sampled such that the two options differed in their distance from the option selected on the previous trial:
+Each option set included a *near* option that was 1--2 positions away from the option selected on the previous trial (either above or below), and a *far* option that was 3 or more positions away from the option selected on the previous trial.
+This manipulation of option distance was designed to test whether participants preferred to select items based on their distance in the active condition.
+In the passive condition selections were evenly divided between near and far options.
+
+#### Learning trials: Active condition.
+
+Each learning trial began with the presentation of the two options in a vertical array in random order (Figure \ref{task}, middle).
+Participants were instructed to select an option at their own pace in order to learn that person's direct supervisor.
+Following their choice the unselected option disappeared and the premise pair (selected item and feedback item) was displayed for 2 s with both items highlighted by red borders.
+The options then disappeared and the experiment immediately proceeded to the next trial.
+
+#### Learning trials: Passive condition.
+
+In the passive condition participants did not decide which option to select.
+As in the active condition, the trial began with the presentation of two options, one of which was already highlighted with a red border.
+Participants were instructed to select the highlighted option at their own pace, at which point the trial proceeded in the same manner as in the active condition.
+
+#### Test phase: All conditions. 
+
+In each test trial, two items were presented side-by-side and the participant was asked to click on the item they judged to be ranked higher in the hierarchy.
+Test responses were self-paced and there was no time limit.
+The test phase was comprised of three types of trials: *recall* trials involving a choice between items from studied premise pairs (e.g., A ? B), *near inference* trials involving items that were 2--3 positions apart (e.g., A ? C), and *far inference* trials involving items that were 4 or more positions apart (e.g., A ? E).
+There were 3 blocks of 24 trials, with each block made up of an equal number of recall, near inference, and far inference trials presented in random order.
+In the second session, participants completed a second run of the same test phase experienced during the first session, with test pairs presented in a new random order.
+
+
+### Operation span. 
+
+The operation span is a well-established measure of working memory capacity in which participants attempt to hold a sequence of items in memory while evaluating a set of interleaved math operations [@turner1989working; @unsworth2005automated].
+In the version used for this study (obtained from http://www.cognitivetools.uk/cognition/tasks/Verbal-WM/operationSpan/) participants attempted to remember sets of digits while judging the validity of arithmetic problems.
+For each math operation they first evaluated whether an equation was correct (e.g., *2 - 4 = -2*) or incorrect (e.g., *2 - 4 = 6*).
+This judgment was followed by the presentation of a digit to be maintained in memory.
+At the end of a trial involving multiple such steps, they then attempted to recall the sequence of digits in the order in which they had appeared.
+The set size (number of operations/digits) ranged from 2--7, presented in increasing order.
+There were three trials of each set size for a total of 18 trials.
+
+
+# Results
+
+The results described below are based on data from all participants, including those who did not return for the second session.
+Returning and non-returning participants did not differ in terms of overall accuracy on the first test, `r apa_print(returned_t_acc)$full_result`, gender distribution,
+`r apa_print(returned_chisq_gender, n=N)$statistic`, or operation span, `r apa_print(returned_t_ospan)$full_result`.
+Separate analyses restricted to data from returning participants did not produce qualitatively different results.
+All error bars in figures represent 95% confidence intervals calculated using the Cousineau-Morey method [@morey2008confidence].
+
+## Operation span
+
+Participants were highly accurate at evaluating the validity of the math operations (judgment accuracy *M* = `r desc.ospan['ospan_math_acc','mean']`, *SD* = `r desc.ospan['ospan_math_acc','sd']`).
+The operation span was scored according to the summed number of digits recalled in the correct order, for those trials in which no errors were made (*M* = `r desc.ospan['ospan_fta','mean']`, *SD* = `r desc.ospan['ospan_fta','sd']`, median = `r desc.ospan['ospan_fta','median']`).
+Operation span scores were square root transformed to correct for positive skew and standardized prior to inclusion in the regression models described below.
+
+## Test performance
+
+### Accuracy
+
+Test responses were scored according to whether participants correctly identified the superordinate item in each test pair (0 = incorrect, 1 = correct).
+Test trials involving either endpoint of the hierarchy were excluded since participants could rely on non-transitive strategies to respond (e.g., the highest-ranked item was never presented as an option on the left side of the screen).
+A separate analysis of test accuracy for trials involving endpoint items is presented in the supplementary material.
+
+```{r accuracy, results='asis'}
+apa_table(fe.acc, small=TRUE, align=c('l', rep('r', 3)),
+          caption='Estimated fixed effects (relative odds ratios) from logistic regression model of test accuracy.')
+```
+
+Accuracy was modeled using mixed effects logistic regression.
+The model included fixed effects for condition (active/passive), session (test/retest), distance (recall/near inference/far inference), and operation span score (continuous), as well as pairwise interactions between condition and session, operation span, and distance.
+Random intercepts were included for participants as well as stimulus test pairs (in order to account for any item-specific effects on memorability).
+Table \@ref(tab:accuracy) presents parameter estimates and confidence intervals for fixed effects in terms of relative odds ratios (*OR*), which indicate the multiplicative change in the odds of responding correctly given a unit change in the predictor.
+Note that 
+
+Active performance was higher than passive performance in both the immediate test (active: *M* = `r desc.acc[with(desc.acc, cond=='active' & session=='test'),]$mn`, *SD* = `r desc.acc[with(desc.acc, cond=='active' & session=='test'),]$sd`; passive: *M* = `r desc.acc[with(desc.acc, cond=='yoked' & session=='test'),]$mn`, 
+*SD* = `r desc.acc[with(desc.acc, cond=='yoked' & session=='test'),]$sd`; `r mcstrOR(mc.acc, OR.acc, 'active - yoked | test')`)
+and in the retest (active: *M* = `r desc.acc[with(desc.acc, cond=='active' & session=='retest'),]$mn`,
+*SD* = `r desc.acc[with(desc.acc, cond=='active' & session=='retest'),]$sd`; passive: *M* = `r desc.acc[with(desc.acc, cond=='yoked' & session=='retest'),]$mn`, 
+*SD* = `r desc.acc[with(desc.acc, cond=='yoked' & session=='retest'),]$sd`; `r mcstrOR(mc.acc, OR.acc, 'active - yoked | retest')`).
+Accuracy declined from the first test to the second test in both the active condition (`r mcstrOR(mc.acc, OR.acc, 'test - retest | active')`)
+and the passive condition (`r mcstrOR(mc.acc, OR.acc, 'test - retest | yoked')`).
+There was a significant symbolic distance effect, such that accuracy increased with inferential distance, in the active condition (`r mcstrOR(mc.acc, OR.acc, 'distance | active')`) but not the passive condition (`r mcstrOR(mc.acc, OR.acc, 'distance | yoked')`).
+
+```{r fig.cap='Test accuracy as a function of inferential distance and test session, following a median split on working memory capacity (operation span scores). \\label{fig_acc}', fig.height=4, fig.width=6}
+print(plt.acc)
+```
+
+Operation span was positively related to performance in the active condition (`r mcstrOR(mc.acc, OR.acc, 'ospan | active')`)
+but not the passive condition (`r mcstrOR(mc.acc, OR.acc, 'ospan | yoked')`).
+A median split on operation span was used to divide participants into a low working memory group (*N* = `r N_ospan_low`) and high working memory group (*N* = `r N_ospan_high`).
+Figure \ref{fig_acc} shows the test performance for each group as a function of inferential distance.
+A followup analysis was performed to examine differences in overall accuracy based on this grouping (aggregating over distance levels).
+Active performance exceeded passive performance in the high WMC group (test: `r mcstrOR(mc.acc_split, OR.acc_split, 'active - yoked | test, high')`; retest: `r mcstrOR(mc.acc_split, OR.acc_split, 'active - yoked | retest, high')`), but was lower than passive performance in the low WMC group (test: `r mcstrOR(mc.acc_split, OR.acc_split, 'active - yoked | test, low')`; retest: `r mcstrOR(mc.acc_split, OR.acc_split, 'active - yoked | retest, low')`). 
+In the high WMC group there was no decline in performance from the test to the retest in the active condition (`r mcstrOR(mc.acc_split, OR.acc_split, 'retest - test | active, high')`), but a large decrease in the passive condition (`r mcstrOR(mc.acc_split, OR.acc_split, 'retest - test | yoked, high')`). 
+In the low WMC group performance declined from the test to the retest in both conditions (active: `r mcstrOR(mc.acc_split, OR.acc_split, 'retest - test | active, low')`; passive: `r mcstrOR(mc.acc_split, OR.acc_split, 'retest - test | yoked, low')`).
+Thus, active and passive study had markedly different consequences depending on participants' score on the operation span, with active control leading to a large, persistent advantage only among higher working memory participants.
+
+
+### Response time 
+
+```{r fig.cap='Response time as a function of inferential distance and test session). \\label{fig_rt}', fig.height=4, fig.width=4}
+print(plt.rt)
+```
+
+Median response time (RT) on test trials was modeled using mixed effects linear regression.
+Figure \ref{fig_rt} shows RT as a function of inferential distance and condition.
+RT decreased from the test to the retest in both the active (test:
+*M* = `r desc.rt[with(desc.rt, cond=='active' & session=='test'),]$mn`, *SD* = `r desc.rt[with(desc.rt, cond=='active' & session=='test'),]$sd`; 
+retest: 
+*M* = `r desc.rt[with(desc.rt, cond=='active' & session=='retest'),]$mn`,
+*SD* = `r desc.rt[with(desc.rt, cond=='active' & session=='retest'),]$sd`; `r mcstr(mc.rt, 'test - retest | active')`),
+and the passive condition (test: 
+*M* = `r desc.rt[with(desc.rt, cond=='yoked' & session=='test'),]$mn`, 
+*SD* = `r desc.rt[with(desc.rt, cond=='yoked' & session=='test'),]$sd`; 
+retest: 
+*M* = `r desc.rt[with(desc.rt, cond=='yoked' & session=='retest'),]$mn`, 
+*SD* = `r desc.rt[with(desc.rt, cond=='yoked' & session=='retest'),]$sd`;
+`r mcstr(mc.rt, 'test - retest | yoked')`).
+However, there were no differences in RT between active and passive conditions for either the test (`r mcstr(mc.rt, 'active - yoked | test')`)
+or the retest (`r mcstr(mc.rt, 'active - yoked | retest')`),
+nor were there significant relationships between operation span scores and RTs in either the active (`r mcstr(mc.rt, 'ospan | active')`) or passive condition (`r mcstr(mc.rt, 'ospan | yoked')`).
+
+Although the two conditions did not differ in overall RT, they showed different relationships with inferential distance between test items.
+Response times decreased with distance in the active condition in both the test (`r mcstr(mc.rt, 'distance | active, test')`) and the retest (`r mcstr(mc.rt, 'distance | active, retest')`), whereas distance had no effect on RT in the passive condition in either the test (`r mcstr(mc.rt, 'distance | yoked, test')`) or the retest (`r mcstr(mc.rt, 'distance | yoked, retest')`).
+As was seen in the accuracy results above, a symbolic distance effect was therefore apparent from RT in the active condition only, with an advantage for more distant inferences as compared to near inferences and direct recall of studied premise pairs.
+
+
+## Selections during learning
+
+The next analysis focused on participants' selections in the learning phase and the extent to which they can account for differences in test performance described above.
+Notably, study condition was not related to selection frequency (multinomial logistic regression, likelihood ratio test: $\chi_{(1,7)}^2$ = `r round(lr.freq_by_ind$Chisq[2], 2)`, *p* = `r round(lr.freq_by_ind$"Pr(>Chisq)"[2], 3)`), indicating that the overall distribution of experienced premise pairs was matched across active and passive study.
+Although individuals may have exhibited idiosyncratic selection behavior in the active condition, at the aggregate level there were no apparent differences in study frequency from the passive condition.
+
+Each selection trial involved a choice between a near option (1--2 positions away from the option selected on the previous trial) and a far option (3 or more positions away).
+By design, the proportion of near choices in the passive condition was approximately 50% (*M* = `r desc.prop_near_comb[with(desc.prop_near_comb, cond=='yoked'),]$mn`, *SD* = `r desc.prop_near_comb[with(desc.prop_near_comb, cond=='yoked'),]$sd`).
+In the active condition participants had a small but robust preference for selecting the near option (*M* = `r desc.prop_near_comb[with(desc.prop_near_comb, cond=='active'),]$mn`, *SD* = `r desc.prop_near_comb[with(desc.prop_near_comb, cond=='active'),]$sd`; `r mcstrOR(mc.prop_near_comb, OR.prop_near_comb, 'active - passive')`).
+As a result, the average distance between successive selections was lower in the active condition (*M* = `r round(desc.sel_distance$active$mean[3], 2)`, *SD* = `r round(desc.sel_distance$yoked$sd[3], 2)`) than the passive condition (*M* = `r round(desc.sel_distance$yoked$mean[3], 2)`, *SD* = `r round(desc.sel_distance$yoked$sd[3], 2)`; `r apa_print(tt.sel_distance)$full_result`).
+
+Near selections may be especially useful if they cause overlapping premise pairs to be experienced in successive trials, which might facilitate integrative encoding when representations of overlapping premise pairs are simultaneously active.
+I next examined whether the preference to select near items in the active condition depended on the distance between the near option and the item selected on the previous trial ($dist_{\text{near}} \in \{-2, -1, +1, +2\}$).
+When $dist_{\text{near}}=+1$, the near option was immediately superordinate to the previously selected item; that is, the near option had appeared as the feedback in the previous trial.
+
+```{r fig.cap='A: Proportion of near selections during learning phase. B: Median response time of selections as a function of trial type. \\label{fig_prop_near}', fig.height=3, fig.width=6.5, fig.pos='th'}
+print(plot_grid(prow, leg, rel_widths=c(3,.5)))
+```
+
+Figure \ref{fig_prop_near}A shows the proportion of near selections as a function of near option distance. 
+In the passive condition, by design there was an equal likelihood of selecting the near item regardless of its distance from the previous selection ($dist_{\text{near}}=-2$: *M* = `r desc.prop_near[with(desc.prop_near, cond=='yoked' & near_distance==-2),]$mn`, *SD* = `r desc.prop_near[with(desc.prop_near, cond=='yoked' & near_distance==-2),]$sd`; $dist_{\text{near}}=-1$: *M* = `r desc.prop_near[with(desc.prop_near, cond=='yoked' & near_distance==-1),]$mn`, *SD* = `r desc.prop_near[with(desc.prop_near, cond=='yoked' & near_distance==-1),]$sd`; $dist_{\text{near}}=+1$: *M* = `r desc.prop_near[with(desc.prop_near, cond=='yoked' & near_distance==1),]$mn`, *SD* = `r desc.prop_near[with(desc.prop_near, cond=='yoked' & near_distance==1),]$sd`; $dist_{\text{near}}=+2$: *M* = `r desc.prop_near[with(desc.prop_near, cond=='yoked' & near_distance==2),]$mn`, *SD* = `r desc.prop_near[with(desc.prop_near, cond=='yoked' & near_distance==2),]$sd`.)
+In the active condition, the proportion of near selections did not differ from the passive condition when $dist_{\text{near}}=-2$ (*M* = `r desc.prop_near[with(desc.prop_near, cond=='active' & near_distance==-2),]$mn`, *SD* = `r desc.prop_near[with(desc.prop_near, cond=='active' & near_distance==-2),]$sd`; `r mcstrOR(mc.prop_near, OR.prop_near, 'active - yoked | -2')`) or $dist_{\text{near}}=+2$ (*M* = `r desc.prop_near[with(desc.prop_near, cond=='active' & near_distance==2),]$mn`, *SD* = `r desc.prop_near[with(desc.prop_near, cond=='active' & near_distance==2),]$sd`; `r mcstrOR(mc.prop_near, OR.prop_near, 'active - yoked | 2')`).
+However, there was a higher proportion of near selections when $dist_{\text{near}}=-1$ (*M* = `r desc.prop_near[with(desc.prop_near, cond=='active' & near_distance==-1),]$mn`, *SD* = `r desc.prop_near[with(desc.prop_near, cond=='active' & near_distance==-1),]$sd`; `r mcstrOR(mc.prop_near, OR.prop_near, 'active - yoked | -1')`) or $dist_{\text{near}}=+1$ (*M* = `r desc.prop_near[with(desc.prop_near, cond=='active' & near_distance==1),]$mn`, *SD* = `r desc.prop_near[with(desc.prop_near, cond=='active' & near_distance==1),]$sd`; `r mcstrOR(mc.prop_near, OR.prop_near, 'active - yoked | 1')`).
+Within the active condition, the proportion of near selections was markedly higher for $dist_{\text{near}}=+1$ than $dist_{\text{near}}=-1$ options (`r mcstrOR(mc.prop_near, OR.prop_near, '1 - (-1) | active')`).
+Thus, in the active condition participants preferred to select the near option when it was adjacent to the option selected on the previous trial, and this preference was strongest when the option had apppeared as feedback in that trial.
+Whereas items were selected with similar frequencies across study conditions, this result suggests that active participants generated a more useful study sequence in which overlapping premise pairs were more likely to be experienced in successive trials.
+
+Can this tendency to select overlapping items account for the performance benefit in the active condition?
+A new model of test accuracy was fit for the active condition which included predictors for the proportion of near selections at each level of $dist_{\text{near}}$.
+There was no relationship between accuracy and proportion of near selections when distance was $dist_{\text{near}}=-2$ (`r mcstrOR(mc.acc_active, OR.acc_active, 'prop_near_neg2')`), $dist_{\text{near}}=-1$ (`r mcstrOR(mc.acc_active, OR.acc_active, 'prop_near_neg1')`), $dist_{\text{near}}=+1$ (`r mcstrOR(mc.acc_active, OR.acc_active, 'prop_near_pos1')`), or $dist_{\text{near}}=+2$ (`r mcstrOR(mc.acc_active, OR.acc_active, 'prop_near_pos2')`).
+The proportion of near selections at any distance was also unrelated to operation span ($dist_{\text{near}}=-2$: `r mcstrOR(mc.prop_near_active, OR.prop_near_active, 'ospan | neg2')`; $dist_{\text{near}}=-1$: `r mcstrOR(mc.prop_near_active, OR.prop_near_active, 'ospan | neg1')`; $dist_{\text{near}}=+1$: `r mcstrOR(mc.prop_near_active, OR.prop_near_active, 'ospan | pos1')`; $dist_{\text{near}}=+2$: `r mcstrOR(mc.prop_near_active, OR.prop_near_active, 'ospan | pos2')`).
+Therefore, the preference to select overlapping options was a general one and could not on its own account for the divergence between active and passive conditions.
+
+
+### Response time
+
+Median response times during selection were higher in the active condition (*M* = `r round(desc.sel_rt$active$mean[4])`, *SD* = `r round(desc.sel_rt$active$sd[4])`) than the passive condition (*M* = `r round(desc.sel_rt$yoked$mean[4])`, *SD* = `r round(desc.sel_rt$yoked$sd[4])`; `r mcstr(mc.sel_rt, 'active - yoked')`), confirming that the need to make a selection decision was associated with an additional processing load.
+In addition, selection RT in the active condition was positively related to operation span scores (`r mcstr(mc.sel_rt, 'ospan | active')`), whereas there was no relationship between operation span scores and selection RT in the passive condition (`r mcstr(mc.sel_rt, 'ospan | yoked')`).
+Thus, high WMC participants who tended to have high accuracy in the active condition also tended to take longer when making selection decisions.
+
+Lastly, I examined how selection RT depended on the distance of the near option, which was shown in the previous section to be strongly preferred when it was immediately above the option selected in the last trial ($dist_{\text{near}}=+1$).
+Figure \ref{fig_prop_near}B shows median RT on trials in which the far option was selected (left) and trials in which the near option was selected (right).
+A three-way repeated measures ANOVA was performed with condition (active/passive), near option distance ($-2/-1/+1/+2$), and selection (near/far) as within-subjects factors.
+In addition to the main effect of condition noted above (`r apa_print(model.sel_rt_overlap$Within)$full_result$cond`), there was a main effect of selection (`r apa_print(model.sel_rt_overlap$Within)$full_result$near`) with RT lower when the near option was selected.
+There was also a main effect of near option distance (`r apa_print(model.sel_rt_overlap$Within)$full_result$near_distance`) and an interaction between selection and near distance (`r apa_print(model.sel_rt_overlap$Within)$full_result$near_distance_near`).
+Post-hoc comparisons indicated that when the far was option was selected (Figure \ref{fig_prop_near}B, left), there were no differences in RT as a function of near option distance in either condition (Tukey HSD, all *p* > .4).
+When the near option was selected in the active condition (Figure \ref{fig_prop_near}B, right), $dist_{\text{near}}=+1$ options were selected faster than all other types (all *p* < .001) but there were no other differences between option distances.
+In the passive condition, $dist_{\text{near}}=+1$ options were selected faster than $dist_{\text{near}}=-2$ options (*p* < .001) but there were no other differences between near option distances.
+In sum, the preference to select the near option when it had appeared as feedback on the previous trial was also evident as faster selection decisions.
+The primacy of $dist_{\text{near}}=+1$ options was even apparent in the passive condition in which there was no selection decision to be made.
+
+
+# Discussion
+
+This study used a novel TI task to examine whether active control aids the integration of relational knowledge during study.
+Control over the selection of premise pairs improved performance relative to passive study in both an immediate test and a retest one week later.
+Symbolic distance effects observed in the active condition strongly imply that this benefit resulted from enhanced integrative encoding, such that active learners relied on an integrated representation of the hierarchy rather than sequential reactivation of premise pairs at test [@acuna2002cognitive; @zeithamova2012hippocampus].
+The absence of such effects following passive study suggests that integrative encoding was less prevalent when the same participants lacked the opportunity to select data.
+
+Active control did not benefit all learners, however, as working memory capacity strongly predicted accuracy in the active condition.
+Among higher WMC participants, active control produced a ~10% initial advantage over passive study (increasing past 20% in the retest) and sustained performance across sessions.
+WMC was unrelated to accuracy in the passive condition, a finding that conflicts with reports that WMC moderates TI under experimenter-controlled conditions [e.g., @libben2008role].
+This discrepancy may be due to the relative difficulty of passive study in the present task.
+Previous studies have typically involved smaller hierarchies (ranging from 3--6 items) and scaffolded training sequences.
+<!-- @fales2003working and @waltz2004relational focused on relational integration while all stimuli were available, removing any demands on maintenance of premise pairs in memory. -->
+For instance, @libben2008role used clustered sequences in which participants were likely to experience overlapping pairs.
+With larger hierarchies and sequences with relatively high distances between successive premises, the passive condition used here may have been especially difficult even for participants with higher WMC.
+
+This study provides the first evidence of systematic search in active TI: Participants strongly preferred to select options that appeared as feedback on the previous trial ($dist_{\text{near}}=+1$).
+Participants thereby naturally generated "chained" sequences of overlapping pairs which tend to improve performance in passive conditions relative to random presentation [@andrews2010belief; @halford1984can; @waltz2004relational].
+This preference was widespread: `r N_sel_near` of 100 participants chose the $dist_{\text{near}}=+1$ option in more than half of trials in which one appeared, and the proportion of near selections was unrelated to WMC.
+Participants were also faster to select $dist_{\text{near}}=+1$ options in both study conditions.
+At present it is unclear what drives this selection preference.
+People may ascribe higher value to chained sequences if they have metacognitive awareness of how to sequence study when learning about related materials [@wahlheim2011spacing].
+However, preferring items from the previous trial might also be explained by simpler forms of priming [@chun2000functional] or attention to recurring visual features [@zhao2013attention]. 
+
+Selection of overlapping pairs should promote integrative encoding, yet not everyone benefited from it.
+<!-- The proportion of overlapping selections was unrelated to accuracy, indicating that this behavior alone cannot account for advantages from active study. -->
+One possibility is that only high WMC individuals capitalize on chained sequences because they maintain representations of premises from trial to trial.
+Alternatively, high WMC individuals may maintain a representation of the hierarchy to decide which option will be useful (e.g., choosing to learn about the option whose rank is more uncertain).
+This interpretation is consistent with the finding that overall selection RT was positively related to WMC, reflecting additional time *before* it was possible to encode feedback information [@maybery1986information].
+Further work is necessary to determine whether this goal-directed evaluation of options' usefulness during selection contributes to the active advantage among high WMC individuals.
+
+These findings offer a new perspective on TI research, which heretofore has focused on experimenter-designed (and somewhat artisanal) training sequences.
+This ignores people's ability to gather information during knowledge formation and, as demonstrated here, can underestimate the efficiency of learning when control is possible [@Gureckis-2012-PPS].
+Morever, the present findings have implications for the value of active control in relational learning more generally.
+In particular, the opportunity to select data may not confer an integrative encoding advantage if a person is unable to bring to mind related experiences.
+For those individuals, active learning may be most effective in concert with memory aids that support comparison and integration [@son2011connecting].
+
+Finally, it is important to note that participants were aware that there was an underlying hierarchy to be learned.
+Awareness influences strategy use in TI [@smith2005declarative] and it is unknown how active control might affect performance in its absence.
+It is likely that active control enhances elemental encoding in such conditions, perhaps due to the mere opportunity for volitional control [@murty2015simple] or additional metacognitive processing [e.g., retrieval practice, @kornell2015retrieval].
+An intriguing further possibility is that active control increases the likelihood of becoming aware of the hierarchy by focusing attention on abstract relationships across study episodes [@henriksson2016learning].
+This would lend support to the broader notion that active learning not only enriches memory for experienced materials, but also fosters the  discovery of abstract knowledge.
+
+
+<!-- # Author Contributions -->
+
+<!-- D. Markant is the sole author of this article and is responsible for its content. -->
+
+# Acknowledgements
+
+The author thanks Meagan Padro, Michele Xiong, Delanie Postma, Arielle Little, and Sunidhi Gupta for assistance with data collection and literature review.
+
+<!-- # Open Practices Statement -->
+
+<!-- The experimental design and analyses reported in this article was were formally preregistered. All data, analysis code, and experiment code is accessible at <OSF link>. -->
+
+<!-- # Declaration of Conflicting Interests -->
+
+<!-- The author declared no conflicts of interest with respect to the authorship or the publication of this article. -->
+
+\newpage
+
+# References
+```{r create_r-references}
+r_refs(file = "r-references.bib")
+```
+
+\begingroup
+\setlength{\parindent}{-0.5in}
+\setlength{\leftskip}{0.5in}
+
+<div id = "refs"></div>
+\endgroup
+
+
+# Supplemental materials
+
+## Test accuracy (endpoint trials)
+
+Accuracy for test trials involving an endpoint was modeled using mixed effects logistic regression with the same model specification as described in the main text.
+Table \@ref(tab:accuracy_endpoint) presents parameter estimates and confidence intervals in terms of relative odds ratios (OR).
+
+```{r accuracy_endpoint, results='asis'}
+apa_table(fe.acc_endpoint, small=TRUE, align=c('l', rep('r', 3)),
+          caption='Estimated fixed effects (relative odds ratios) from logistic regression model of test accuracy for trials involving an endpoint.')
+```
+
+Active performance was higher than passive performance in both the immediate test (active: *M* = `r desc.acc_endpoint[with(desc.acc_endpoint, cond=='active' & session=='test'),]$mn`, *SD* = `r desc.acc_endpoint[with(desc.acc_endpoint, cond=='active' & session=='test'),]$sd`; passive: *M* = `r desc.acc_endpoint[with(desc.acc_endpoint, cond=='yoked' & session=='test'),]$mn`, 
+*SD* = `r desc.acc_endpoint[with(desc.acc_endpoint, cond=='yoked' & session=='test'),]$sd`; `r mcstrOR(mc.acc_endpoint, OR.acc_endpoint, 'active - yoked | test')`)
+and in the retest (active: *M* = `r desc.acc_endpoint[with(desc.acc_endpoint, cond=='active' & session=='retest'),]$mn`,
+*SD* = `r desc.acc_endpoint[with(desc.acc_endpoint, cond=='active' & session=='retest'),]$sd`; passive: *M* = `r desc.acc_endpoint[with(desc.acc_endpoint, cond=='yoked' & session=='retest'),]$mn`, 
+*SD* = `r desc.acc_endpoint[with(desc.acc_endpoint, cond=='yoked' & session=='retest'),]$sd`; `r mcstrOR(mc.acc_endpoint, OR.acc_endpoint, 'active - yoked | retest')`).
+Accuracy declined from the first test to the second test in both the active condition (`r mcstrOR(mc.acc_endpoint, OR.acc_endpoint, 'test - retest | active')`)
+and the passive condition (`r mcstrOR(mc.acc_endpoint, OR.acc_endpoint, 'test - retest | yoked')`).
+
+```{r fig.cap='Test accuracy on endpoint trials as a function of inferential distance and test session, following a median split on working memory capacity (operation span scores). \\label{fig_acc_endpoint}', fig.height=4, fig.width=6}
+print(plt.acc_endpoint)
+```
+
+Inferential distance was unrelated to accuracy in both the active (`r mcstrOR(mc.acc_endpoint, OR.acc_endpoint, 'distance | active')`) and the passive condition (`r mcstrOR(mc.acc_endpoint, OR.acc_endpoint, 'distance | yoked')`), indicating an absence of a symbolic distance effect.
+Operation span scores were positively related to performance in the active condition (`r mcstrOR(mc.acc_endpoint, OR.acc_endpoint, 'ospan | active')`)
+but not the passive condition (`r mcstrOR(mc.acc_endpoint, OR.acc_endpoint, 'ospan | yoked')`).
+Thus, test performance largely followed the same pattern as for trials that did not involve endpoints of the hierarchy (see main text), but with weaker effects of selection condition and working memory capacity on accuracy.
+Figure \ref{fig_acc_endpoint} shows accuracy on endpoint trials following a median split on operation span scores.
+Notably, performance is relatively high across all conditions (even among lower WMC participants), consistent with the use of alternative strategies in order to judge the rank of endpoint items.
+
+
