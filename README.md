@@ -1,1 +1,1 @@
-# study_active_transitive_inference
+# Active Transitive Inference
