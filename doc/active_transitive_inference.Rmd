@@ -1385,6 +1385,9 @@ r_refs(file = "r-references.bib")
 \endgroup
 
 
+\newpage
+
+
 # Supplemental materials
 
 ## Test accuracy (endpoint trials)
@@ -1392,10 +1395,6 @@ r_refs(file = "r-references.bib")
 Accuracy for test trials involving an endpoint was modeled using mixed effects logistic regression with the same model specification as described in the main text.
 Table \@ref(tab:accuracy_endpoint) presents parameter estimates and confidence intervals in terms of relative odds ratios (OR).
 
-```{r accuracy_endpoint, results='asis'}
-apa_table(fe.acc_endpoint, small=TRUE, align=c('l', rep('r', 3)),
-          caption='Estimated fixed effects (relative odds ratios) from logistic regression model of test accuracy for trials involving an endpoint.')
-```
 
 Active performance was higher than passive performance in both the immediate test (active: *M* = `r desc.acc_endpoint[with(desc.acc_endpoint, cond=='active' & session=='test'),]$mn`, *SD* = `r desc.acc_endpoint[with(desc.acc_endpoint, cond=='active' & session=='test'),]$sd`; passive: *M* = `r desc.acc_endpoint[with(desc.acc_endpoint, cond=='yoked' & session=='test'),]$mn`, 
 *SD* = `r desc.acc_endpoint[with(desc.acc_endpoint, cond=='yoked' & session=='test'),]$sd`; `r mcstrOR(mc.acc_endpoint, OR.acc_endpoint, 'active - yoked | test')`)
@@ -1404,6 +1403,11 @@ and in the retest (active: *M* = `r desc.acc_endpoint[with(desc.acc_endpoint, co
 *SD* = `r desc.acc_endpoint[with(desc.acc_endpoint, cond=='yoked' & session=='retest'),]$sd`; `r mcstrOR(mc.acc_endpoint, OR.acc_endpoint, 'active - yoked | retest')`).
 Accuracy declined from the first test to the second test in both the active condition (`r mcstrOR(mc.acc_endpoint, OR.acc_endpoint, 'test - retest | active')`)
 and the passive condition (`r mcstrOR(mc.acc_endpoint, OR.acc_endpoint, 'test - retest | yoked')`).
+
+```{r accuracy_endpoint, results='asis'}
+apa_table(fe.acc_endpoint, small=TRUE, align=c('l', rep('r', 3)),
+          caption='Estimated fixed effects (relative odds ratios) from logistic regression model of test accuracy for trials involving an endpoint.')
+```
 
 
 Inferential distance was unrelated to accuracy in both the active (`r mcstrOR(mc.acc_endpoint, OR.acc_endpoint, 'distance | active')`) and the passive condition (`r mcstrOR(mc.acc_endpoint, OR.acc_endpoint, 'distance | yoked')`), indicating an absence of a symbolic distance effect.
