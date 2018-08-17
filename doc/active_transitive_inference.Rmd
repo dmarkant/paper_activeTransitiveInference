@@ -1231,7 +1231,7 @@ Thus, active and passive study had markedly different consequences depending on 
 
 ### Response time 
 
-```{r fig.cap='Response time as a function of inferential distance and test session). \\label{fig_rt}', fig.height=4, fig.width=4}
+```{r fig.cap='Response time as a function of inferential distance and test session. \\label{fig_rt}', fig.height=4, fig.width=4}
 print(plt.rt)
 ```
 
@@ -1343,7 +1343,7 @@ Further work is necessary to determine whether this goal-directed evaluation of 
 
 These findings offer a new perspective on TI research, which heretofore has focused on experimenter-designed (and somewhat artisanal) training sequences.
 This ignores people's ability to gather information during knowledge formation and, as demonstrated here, can underestimate the efficiency of learning when control is possible [@Gureckis-2012-PPS].
-Morever, the present findings have implications for the value of active control in relational learning more generally.
+Moreover, the present findings have implications for the value of active control in relational learning more generally.
 The opportunity to select data may not enhance integrative encoding if a person is unable to bring to mind related experiences.
 For those individuals, active learning may be most effective in concert with memory aids that support comparison and integration [@son2011connecting].
 
