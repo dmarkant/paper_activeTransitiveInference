@@ -17,7 +17,7 @@ author_note: |
   Douglas B. Markant, Department of Psychological Science, University of North Carolina at Charlotte.
 
 abstract: |
-  Enter abstract here. Each new line herein must be indented, like this line. (150 words)
+  Research in education and psychology has shown that “active learning” improves learning outcomes over passive conditions. Recent work suggests that one explanation for these findings is that learner control improves episodic memory for study experiences. It is less clear how active learning impacts the integration of those experiences into flexible, generalizable knowledge. This study used a novel active transitive inference task to investigate how people learn a relational hierarchy through self-directed selection of premises. Active control improved memory for studied premises as well as transitive inferences involving items that were never experienced together. Moreover, active learners exhibited systematic search, generating sequences of overlapping premises that facilitate relational integration. Critically, however, advantages from active control were not universal: Only participants with higher working memory capacity benefited from the opportunity to select data. These findings provide striking evidence that active control enhances integrative encoding, but only among individuals with sufficient cognitive resources.
   
 keywords          : "active learning, transitive inference, inference, memory, information search"
 
@@ -778,18 +778,6 @@ plt.acc = ggplot(data=agg) +
   
 
 
-# add selection RT to the model
-#model.acc_sel_rt = update(model.acc, . ~ . + sc.sel_med_rt)
-#ef_sel_rt_active    = c(0, 0, 0, 0, 0, 1, 0, 0, 0, 0)
-#ef_sel_rt_yoked     = c(0, 0, 0, 0, 0, 1, 0, 0, 0, 1)
-
-#contr = rbind("sel_rt | active" = ef_sel_rt_active,
-#              "sel_rt | yoked" = ef_sel_rt_yoked)
-#mc.sel_rt = summary(glht(model.sel_rt, linfct=contr),
-#                       test=adjusted('none'))
-
-
-
 model.acc_split = glmer(correct ~ 
                     session*cond*ospan_bin + 
                     (1|sid) + (1|pair_id), 
@@ -1027,14 +1015,14 @@ plt.rt_endpoint = ggplot(data=agg2) +
 ```
 
 How does the opportunity to control a learning experience alter subsequent memory of it?
-Recent research has shown that active control over learning enhances episodic memory for experienced material compared to passive learners who observe the same information [@markant2014deconstructing; @voss2010hippocampal].
+Recent research has shown that active control over learning enhances episodic memory for experienced material compared to passive observation of the same information [@markant2014deconstructing; @voss2010hippocampal].
 This enhancement can arise from a number of mechanisms, including improved attentional coordination, metacognitive monitoring, or changes in encoding associated with volitional control [for a review, see @markant2016enhanced].
 
 It is less clear how active control affects the integration of studied material into flexible, generalizable knowledge. 
-Previous comparisons of active and passive study have focused on memorization of independent, unrelated items (e.g., lists of paired associates).
+Previous comparisons of active and passive study have focused on memorization of independent, unrelated items (e.g., images of objects).
 <!-- ; although see studies of spatial memory, @chrastil2012active]. -->
 Other work has revealed improved generalization from active information selection when learning categorical rules [@markant2014select] or causal relationships [@Steyvers:2003vk].
-However, these studies cannot answer a crucial question about the cause of these advantages: Do they reflect better memory for experienced information itself (which then supports generalization later on) or the formation of relational knowledge that abstracts away from that experience?
+However, these latter studies cannot answer a crucial question about the cause of these advantages: Do they reflect better memory for experienced information itself (which then supports generalization later on) or the formation of relational knowledge that abstracts away from that experience?
 <!-- \hl{In order to understand the broader impact of active control it is important to disentangle its effects on episodic memory for experienced information from its effects on how that information is integrated into flexible, generalizable knowledge.} -->
 <!-- These outcomes reflect two learning objectives that are both essential to real-world educational contexts in which active control of learning is increasingly seen as a necessary component. -->
 Following @zeithamova2012hippocampus, these alternatives can be mapped onto two types of memory formation: *elemental encoding* of stimuli or associations that are directly experienced, and *integrative encoding* through which disparate study episodes are bound together into a unified representation.
@@ -1042,7 +1030,8 @@ Existing research has established that active control enhances elemental encodin
 
 The present study examined the effects of active control in a well-known example of generalization from memory: transitive inference (TI).
 In TI people learn about an ordered hierarchy (e.g., A < B < C) by studing premises comprised of adjacent items (e.g., A < B, B < C).
-They are then tested on their memory for studied pairs (*recall trials*; e.g., A ? B) and their ability to infer relationships between items that were never experienced together (*inference trials*; e.g., A ? C). Transitive inference is a fundamental building block of reasoning and has been the subject of a wealth of past research, yet it has always been studied under passive conditions in control is absent. 
+They are then tested on their memory for studied pairs (*recall trials*; e.g., A ? B) and their ability to infer relationships between items that were never experienced together (*inference trials*; e.g., A ? C). 
+Transitive inference is a fundamental building block of reasoning and has been the subject of a wealth of past research, yet it has always been studied under passive conditions in which control is absent. 
 <!-- which learners cannot control the order in which premises are experienced. -->
 This study introduces a novel *active transitive inference* task in which participants chose which premises to study during learning.
 Their goal was to learn the "chain of command" at a set of 9-person companies, where each premise included an employee and their direct supervisor (represented by face images).
@@ -1068,11 +1057,11 @@ Inference then simply entails comparing the positions of any two items along tha
 Importantly, accuracy should *increase* (and response time decrease) with inferential distance, as items that are further apart on that latent dimension are easier to distinguish.
 Such *symbolic distance effects* are a hallmark of integrative encoding [@acuna2002cognitive; @moyer1967time].
 
-Although alternative forms of associative or reinforcement learning may also support TI [@von1991transitive; @frank2005logic], the construction of a propositional representation is especially likely when participants are aware there is an underlying hierarchy [@lazareva2010nonverbal; @moses2006investigation].
+Although alternative forms of associative or reinforcement learning may also support TI [@von1991transitive; @frank2005logic], the construction of a propositional representation is especially likely when participants are aware there is an underlying hierarchy to be learned [@lazareva2010nonverbal; @moses2006investigation].
 Accuracy is also higher among participants who report post-task awareness of the hierarchy [@martin2004transitive], who are informed prior to training [@greene2001relational; @libben2008role; @kumaran2013transitivity; @smith2005declarative], or when stimuli evoke hierarchical schemas [@kumaran2013schema; @moses2010relational].
 The use of propositional representations is also supported by evidence that inference depends on working memory capacity (WMC) [@titone2004transitive; @fales2003working], particularly when participants are aware of the hierarchy [@libben2008role].
 <!-- This is consistent with evidence that frontal dementia [@waltz2004relational] and damage to lateral prefrontal cortex [@wendelken2010transitive] impair the coordination of premises during TI. -->
-In sum, constructing an integrated representation is typically associated with superior generalization, but also depends on explicit awareness and incurs cognitive costs.
+In sum, integrative encoding is typically associated with superior generalization, but also depends on explicit awareness and incurs additional cognitive costs during study.
 
 <!-- There has been considerable debate about the nature of the representation that is formed during study in TI. -->
 <!-- Associative or reinforcement learning can also support TI and provide an alternative explanation for symbolic distance effects [@leo2008awareness; @von1991transitive; @frank2003transitivity; @frank2005logic]. -->
@@ -1083,7 +1072,7 @@ In sum, constructing an integrated representation is typically associated with s
 ## Learner control and integrative encoding
 
 Transitive inference is an ideal setting to examine whether active control has broader benefits for memory formation beyond enriched elemental encoding of the study experience.
-A principal reason to expect enhanced integrative encoding is that people may use their present knowledge of the hierarchy to direct their own learning.
+A principal reason to expect enhanced integrative encoding is that people may use their current knowledge of the hierarchy to direct their own learning.
 <!-- One reason to expect enhanced integrative encoding is if the opportunity to select pairs causes people to construct an integrated representation as they learn. -->
 By assessing what they already know, learners may better evaluate which option will be informative and, in turn, more effectively allocate their study time.
 At the same time, this process might involve additional demands that depend on individual differences in working memory capacity.
@@ -1094,7 +1083,7 @@ To evaluate this prediction a measurement of operation span was included in addi
 <!-- These retrieval attempts should lead to enhanced elemental encoding, either due to test-potentiated learning [] or because it allows the learner to allocate effort to pairs that are less well-learned. -->
 
 The active TI task was also designed to explore how people decide to select premises.
-Passive training often incorporates scaffolding whereby overlapping pairs are experienced in direct succession because it is easier to learn than random presentation [@halford1984can; @waltz2004relational].
+Passive training often incorporates scaffolding whereby overlapping pairs are experienced in direct succession, a procedure that speeds learning relative to random presentation [@halford1984can; @waltz2004relational].
 If studying nearby premises aids relational integration, active learners may similarly benefit from choosing such options.
 Each active selection therefore involved a choice between a *near* and *far* option which differed in their distance from the pair studied on the previous trial. 
 <!-- This made it possible to test for a selection preference and its relationship to inferential accuracy. -->
@@ -1215,7 +1204,6 @@ Accuracy was modeled using mixed effects logistic regression.
 The model included fixed effects for condition (active/passive), session (test/retest), distance (recall/near inference/far inference), and operation span score (continuous), as well as pairwise interactions between condition and session, operation span, and distance.
 Random intercepts were included for participants as well as stimulus test pairs (in order to account for any item-specific effects on memorability).
 Table \@ref(tab:accuracy) presents parameter estimates and confidence intervals for fixed effects in terms of relative odds ratios (*OR*), which indicate the multiplicative change in the odds of responding correctly given a unit change in the predictor.
-Note that 
 
 Active performance was higher than passive performance in both the immediate test (active: *M* = `r desc.acc[with(desc.acc, cond=='active' & session=='test'),]$mn`, *SD* = `r desc.acc[with(desc.acc, cond=='active' & session=='test'),]$sd`; passive: *M* = `r desc.acc[with(desc.acc, cond=='yoked' & session=='test'),]$mn`, 
 *SD* = `r desc.acc[with(desc.acc, cond=='yoked' & session=='test'),]$sd`; `r mcstrOR(mc.acc, OR.acc, 'active - yoked | test')`)
@@ -1238,7 +1226,7 @@ A followup analysis was performed to examine differences in overall accuracy bas
 Active performance exceeded passive performance in the high WMC group (test: `r mcstrOR(mc.acc_split, OR.acc_split, 'active - yoked | test, high')`; retest: `r mcstrOR(mc.acc_split, OR.acc_split, 'active - yoked | retest, high')`), but was lower than passive performance in the low WMC group (test: `r mcstrOR(mc.acc_split, OR.acc_split, 'active - yoked | test, low')`; retest: `r mcstrOR(mc.acc_split, OR.acc_split, 'active - yoked | retest, low')`). 
 In the high WMC group there was no decline in performance from the test to the retest in the active condition (`r mcstrOR(mc.acc_split, OR.acc_split, 'retest - test | active, high')`), but a large decrease in the passive condition (`r mcstrOR(mc.acc_split, OR.acc_split, 'retest - test | yoked, high')`). 
 In the low WMC group performance declined from the test to the retest in both conditions (active: `r mcstrOR(mc.acc_split, OR.acc_split, 'retest - test | active, low')`; passive: `r mcstrOR(mc.acc_split, OR.acc_split, 'retest - test | yoked, low')`).
-Thus, active and passive study had markedly different consequences depending on participants' score on the operation span, with active control leading to a large, persistent advantage only among higher working memory participants.
+Thus, active and passive study had markedly different consequences depending on participants' operation span, with active control leading to a large, sustained advantage only among higher working memory participants.
 
 
 ### Response time 
@@ -1265,9 +1253,9 @@ However, there were no differences in RT between active and passive conditions f
 or the retest (`r mcstr(mc.rt, 'active - yoked | retest')`),
 nor were there significant relationships between operation span scores and RTs in either the active (`r mcstr(mc.rt, 'ospan | active')`) or passive condition (`r mcstr(mc.rt, 'ospan | yoked')`).
 
-Although the two conditions did not differ in overall RT, they showed different relationships with inferential distance between test items.
+Although the two conditions did not differ in overall test RT, they showed different relationships with inferential distance between test items.
 Response times decreased with distance in the active condition in both the test (`r mcstr(mc.rt, 'distance | active, test')`) and the retest (`r mcstr(mc.rt, 'distance | active, retest')`), whereas distance had no effect on RT in the passive condition in either the test (`r mcstr(mc.rt, 'distance | yoked, test')`) or the retest (`r mcstr(mc.rt, 'distance | yoked, retest')`).
-As was seen in the accuracy results above, a symbolic distance effect was therefore apparent from RT in the active condition only, with an advantage for more distant inferences as compared to near inferences and direct recall of studied premise pairs.
+As was seen in the accuracy results above, a symbolic distance effect was therefore apparent from RTs in the active condition only, with an advantage for more distant inferences as compared to near inferences and direct recall of studied premise pairs.
 
 
 ## Selections during learning
@@ -1277,11 +1265,11 @@ Notably, study condition was not related to selection frequency (multinomial log
 Although individuals may have exhibited idiosyncratic selection behavior in the active condition, at the aggregate level there were no apparent differences in study frequency from the passive condition.
 
 Each selection trial involved a choice between a near option (1--2 positions away from the option selected on the previous trial) and a far option (3 or more positions away).
-By design, the proportion of near choices in the passive condition was approximately 50% (*M* = `r desc.prop_near_comb[with(desc.prop_near_comb, cond=='yoked'),]$mn`, *SD* = `r desc.prop_near_comb[with(desc.prop_near_comb, cond=='yoked'),]$sd`).
+By design, the proportion of near selections in the passive condition was approximately 50% (*M* = `r desc.prop_near_comb[with(desc.prop_near_comb, cond=='yoked'),]$mn`, *SD* = `r desc.prop_near_comb[with(desc.prop_near_comb, cond=='yoked'),]$sd`).
 In the active condition participants had a small but robust preference for selecting the near option (*M* = `r desc.prop_near_comb[with(desc.prop_near_comb, cond=='active'),]$mn`, *SD* = `r desc.prop_near_comb[with(desc.prop_near_comb, cond=='active'),]$sd`; `r mcstrOR(mc.prop_near_comb, OR.prop_near_comb, 'active - passive')`).
 As a result, the average distance between successive selections was lower in the active condition (*M* = `r round(desc.sel_distance$active$mean[3], 2)`, *SD* = `r round(desc.sel_distance$yoked$sd[3], 2)`) than the passive condition (*M* = `r round(desc.sel_distance$yoked$mean[3], 2)`, *SD* = `r round(desc.sel_distance$yoked$sd[3], 2)`; `r apa_print(tt.sel_distance)$full_result`).
 
-Near selections may be especially useful if they cause overlapping premise pairs to be experienced in successive trials, which might facilitate integrative encoding when representations of overlapping premise pairs are simultaneously active.
+Near selections may be especially useful if they cause overlapping premise pairs to be experienced in successive trials, which might facilitate integrative encoding when representations of overlapping premises are simultaneously active.
 I next examined whether the preference to select near items in the active condition depended on the distance between the near option and the item selected on the previous trial ($dist_{\text{near}} \in \{-2, -1, +1, +2\}$).
 When $dist_{\text{near}}=+1$, the near option was immediately superordinate to the previously selected item; that is, the near option had appeared as the feedback in the previous trial.
 
@@ -1289,15 +1277,15 @@ When $dist_{\text{near}}=+1$, the near option was immediately superordinate to t
 print(plot_grid(prow, leg, rel_widths=c(3,.5)))
 ```
 
-Figure \ref{fig_prop_near}A shows the proportion of near selections as a function of near option distance. 
-In the passive condition, by design there was an equal likelihood of selecting the near item regardless of its distance from the previous selection ($dist_{\text{near}}=-2$: *M* = `r desc.prop_near[with(desc.prop_near, cond=='yoked' & near_distance==-2),]$mn`, *SD* = `r desc.prop_near[with(desc.prop_near, cond=='yoked' & near_distance==-2),]$sd`; $dist_{\text{near}}=-1$: *M* = `r desc.prop_near[with(desc.prop_near, cond=='yoked' & near_distance==-1),]$mn`, *SD* = `r desc.prop_near[with(desc.prop_near, cond=='yoked' & near_distance==-1),]$sd`; $dist_{\text{near}}=+1$: *M* = `r desc.prop_near[with(desc.prop_near, cond=='yoked' & near_distance==1),]$mn`, *SD* = `r desc.prop_near[with(desc.prop_near, cond=='yoked' & near_distance==1),]$sd`; $dist_{\text{near}}=+2$: *M* = `r desc.prop_near[with(desc.prop_near, cond=='yoked' & near_distance==2),]$mn`, *SD* = `r desc.prop_near[with(desc.prop_near, cond=='yoked' & near_distance==2),]$sd`.)
+Figure \ref{fig_prop_near}A shows the proportion of near selections as a function of their distance from the previous selection. 
+In the passive condition, by design there was an equal likelihood of selecting the near item regardless of its distance ($dist_{\text{near}}=-2$: *M* = `r desc.prop_near[with(desc.prop_near, cond=='yoked' & near_distance==-2),]$mn`, *SD* = `r desc.prop_near[with(desc.prop_near, cond=='yoked' & near_distance==-2),]$sd`; $dist_{\text{near}}=-1$: *M* = `r desc.prop_near[with(desc.prop_near, cond=='yoked' & near_distance==-1),]$mn`, *SD* = `r desc.prop_near[with(desc.prop_near, cond=='yoked' & near_distance==-1),]$sd`; $dist_{\text{near}}=+1$: *M* = `r desc.prop_near[with(desc.prop_near, cond=='yoked' & near_distance==1),]$mn`, *SD* = `r desc.prop_near[with(desc.prop_near, cond=='yoked' & near_distance==1),]$sd`; $dist_{\text{near}}=+2$: *M* = `r desc.prop_near[with(desc.prop_near, cond=='yoked' & near_distance==2),]$mn`, *SD* = `r desc.prop_near[with(desc.prop_near, cond=='yoked' & near_distance==2),]$sd`.)
 In the active condition, the proportion of near selections did not differ from the passive condition when $dist_{\text{near}}=-2$ (*M* = `r desc.prop_near[with(desc.prop_near, cond=='active' & near_distance==-2),]$mn`, *SD* = `r desc.prop_near[with(desc.prop_near, cond=='active' & near_distance==-2),]$sd`; `r mcstrOR(mc.prop_near, OR.prop_near, 'active - yoked | -2')`) or $dist_{\text{near}}=+2$ (*M* = `r desc.prop_near[with(desc.prop_near, cond=='active' & near_distance==2),]$mn`, *SD* = `r desc.prop_near[with(desc.prop_near, cond=='active' & near_distance==2),]$sd`; `r mcstrOR(mc.prop_near, OR.prop_near, 'active - yoked | 2')`).
 However, there was a higher proportion of near selections when $dist_{\text{near}}=-1$ (*M* = `r desc.prop_near[with(desc.prop_near, cond=='active' & near_distance==-1),]$mn`, *SD* = `r desc.prop_near[with(desc.prop_near, cond=='active' & near_distance==-1),]$sd`; `r mcstrOR(mc.prop_near, OR.prop_near, 'active - yoked | -1')`) or $dist_{\text{near}}=+1$ (*M* = `r desc.prop_near[with(desc.prop_near, cond=='active' & near_distance==1),]$mn`, *SD* = `r desc.prop_near[with(desc.prop_near, cond=='active' & near_distance==1),]$sd`; `r mcstrOR(mc.prop_near, OR.prop_near, 'active - yoked | 1')`).
 Within the active condition, the proportion of near selections was markedly higher for $dist_{\text{near}}=+1$ than $dist_{\text{near}}=-1$ options (`r mcstrOR(mc.prop_near, OR.prop_near, '1 - (-1) | active')`).
-Thus, in the active condition participants preferred to select the near option when it was adjacent to the option selected on the previous trial, and this preference was strongest when the option had apppeared as feedback in that trial.
-Whereas items were selected with similar frequencies across study conditions, this result suggests that active participants generated a more useful study sequence in which overlapping premise pairs were more likely to be experienced in successive trials.
+Thus, participants preferred to select the near option when it was adjacent to the option selected on the previous trial, and this preference was strongest when the option had apppeared as feedback in that trial.
+Whereas items were selected with similar frequencies across study conditions, this result shows that participants generated study sequences during active study in which overlapping premises were more likely to be experienced in successive trials.
 
-Can this tendency to select overlapping items account for the performance benefit in the active condition?
+Can this tendency to select overlapping premises account for the performance benefit in the active condition?
 A new model of test accuracy was fit for the active condition which included predictors for the proportion of near selections at each level of $dist_{\text{near}}$.
 There was no relationship between accuracy and proportion of near selections when distance was $dist_{\text{near}}=-2$ (`r mcstrOR(mc.acc_active, OR.acc_active, 'prop_near_neg2')`), $dist_{\text{near}}=-1$ (`r mcstrOR(mc.acc_active, OR.acc_active, 'prop_near_neg1')`), $dist_{\text{near}}=+1$ (`r mcstrOR(mc.acc_active, OR.acc_active, 'prop_near_pos1')`), or $dist_{\text{near}}=+2$ (`r mcstrOR(mc.acc_active, OR.acc_active, 'prop_near_pos2')`).
 The proportion of near selections at any distance was also unrelated to operation span ($dist_{\text{near}}=-2$: `r mcstrOR(mc.prop_near_active, OR.prop_near_active, 'ospan | neg2')`; $dist_{\text{near}}=-1$: `r mcstrOR(mc.prop_near_active, OR.prop_near_active, 'ospan | neg1')`; $dist_{\text{near}}=+1$: `r mcstrOR(mc.prop_near_active, OR.prop_near_active, 'ospan | pos1')`; $dist_{\text{near}}=+2$: `r mcstrOR(mc.prop_near_active, OR.prop_near_active, 'ospan | pos2')`).
@@ -1307,18 +1295,18 @@ Therefore, the preference to select overlapping options was a general one and co
 ### Response time
 
 Median response times during selection were higher in the active condition (*M* = `r round(desc.sel_rt$active$mean[4])`, *SD* = `r round(desc.sel_rt$active$sd[4])`) than the passive condition (*M* = `r round(desc.sel_rt$yoked$mean[4])`, *SD* = `r round(desc.sel_rt$yoked$sd[4])`; `r mcstr(mc.sel_rt, 'active - yoked')`), confirming that the need to make a selection decision was associated with an additional processing load.
-In addition, selection RT in the active condition was positively related to operation span scores (`r mcstr(mc.sel_rt, 'ospan | active')`), whereas there was no relationship between operation span scores and selection RT in the passive condition (`r mcstr(mc.sel_rt, 'ospan | yoked')`).
+In addition, selection RT in the active condition was positively related to operation span (`r mcstr(mc.sel_rt, 'ospan | active')`), whereas there was no relationship between operation span and selection RT in the passive condition (`r mcstr(mc.sel_rt, 'ospan | yoked')`).
 Thus, high WMC participants who tended to have high accuracy in the active condition also tended to take longer when making selection decisions.
 
-Lastly, I examined how selection RT depended on the distance of the near option, which was shown in the previous section to be strongly preferred when it was immediately above the option selected in the last trial ($dist_{\text{near}}=+1$).
+Lastly, I examined how selection RT depended on the distance of the near option, which was shown in the previous section to be strongly preferred when it was immediately superordinate to the option selected in the last trial ($dist_{\text{near}}=+1$).
 Figure \ref{fig_prop_near}B shows median RT on trials in which the far option was selected (left) and trials in which the near option was selected (right).
 A three-way repeated measures ANOVA was performed with condition (active/passive), near option distance ($-2/-1/+1/+2$), and selection (near/far) as within-subjects factors.
 In addition to the main effect of condition noted above (`r apa_print(model.sel_rt_overlap$Within)$full_result$cond`), there was a main effect of selection (`r apa_print(model.sel_rt_overlap$Within)$full_result$near`) with RT lower when the near option was selected.
 There was also a main effect of near option distance (`r apa_print(model.sel_rt_overlap$Within)$full_result$near_distance`) and an interaction between selection and near distance (`r apa_print(model.sel_rt_overlap$Within)$full_result$near_distance_near`).
-Post-hoc comparisons indicated that when the far was option was selected (Figure \ref{fig_prop_near}B, left), there were no differences in RT as a function of near option distance in either condition (Tukey HSD, all *p* > .4).
+Post-hoc comparisons indicated that when the far was option was selected (Figure \ref{fig_prop_near}B, left), there were no differences in RT as a function of distance in either condition (Tukey HSD, all *p* > .4).
 When the near option was selected in the active condition (Figure \ref{fig_prop_near}B, right), $dist_{\text{near}}=+1$ options were selected faster than all other types (all *p* < .001) but there were no other differences between option distances.
 In the passive condition, $dist_{\text{near}}=+1$ options were selected faster than $dist_{\text{near}}=-2$ options (*p* < .001) but there were no other differences between near option distances.
-In sum, the preference to select the near option when it had appeared as feedback on the previous trial was also evident as faster selection decisions.
+In sum, the preference to select the near option when it had appeared as feedback on the previous trial was also evident in faster selection decisions.
 The primacy of $dist_{\text{near}}=+1$ options was even apparent in the passive condition in which there was no selection decision to be made.
 
 
@@ -1336,9 +1324,9 @@ This discrepancy may be due to the relative difficulty of passive study in the p
 Previous studies have typically involved smaller hierarchies (ranging from 3--6 items) and scaffolded training sequences.
 <!-- @fales2003working and @waltz2004relational focused on relational integration while all stimuli were available, removing any demands on maintenance of premise pairs in memory. -->
 For instance, @libben2008role used clustered sequences in which participants were likely to experience overlapping pairs.
-With larger hierarchies and sequences with relatively high distances between successive premises, the passive condition used here may have been especially difficult even for participants with higher WMC.
+With larger hierarchies and sequences with relatively high distances between successive premises, the passive condition used here may have been comparatively difficult even for participants with higher WMC.
 
-This study provides the first evidence of systematic search in active TI: Participants strongly preferred to select options that appeared as feedback on the previous trial ($dist_{\text{near}}=+1$).
+This study provides the first evidence of systematic search in TI: Participants strongly preferred to select options that appeared as feedback on the previous trial ($dist_{\text{near}}=+1$).
 Participants thereby naturally generated "chained" sequences of overlapping pairs which tend to improve performance in passive conditions relative to random presentation [@andrews2010belief; @halford1984can; @waltz2004relational].
 This preference was widespread: `r N_sel_near` of 100 participants chose the $dist_{\text{near}}=+1$ option in more than half of trials in which one appeared, and the proportion of near selections was unrelated to WMC.
 Participants were also faster to select $dist_{\text{near}}=+1$ options in both study conditions.
@@ -1346,24 +1334,24 @@ At present it is unclear what drives this selection preference.
 People may ascribe higher value to chained sequences if they have metacognitive awareness of how to sequence study when learning about related materials [@wahlheim2011spacing].
 However, preferring items from the previous trial might also be explained by simpler forms of priming [@chun2000functional] or attention to recurring visual features [@zhao2013attention]. 
 
-Selection of overlapping pairs should promote integrative encoding, yet not everyone benefited from it.
+Selection of overlapping premises should promote integrative encoding, yet not everyone benefited from it, suggesting that differences in study sequences alone cannot account for active performance.
 <!-- The proportion of overlapping selections was unrelated to accuracy, indicating that this behavior alone cannot account for advantages from active study. -->
 One possibility is that only high WMC individuals capitalize on chained sequences because they maintain representations of premises from trial to trial.
-Alternatively, high WMC individuals may maintain a representation of the hierarchy to decide which option will be useful (e.g., choosing to learn about the option whose rank is more uncertain).
-This interpretation is consistent with the finding that overall selection RT was positively related to WMC, reflecting additional time *before* it was possible to encode feedback information [@maybery1986information].
+Alternatively, high WMC individuals may construct a representation of the hierarchy to decide which option will be useful (e.g., choosing to learn about the option whose rank is more uncertain).
+This interpretation is consistent with the finding that overall selection RT was positively related to WMC, reflecting additional time before it was possible to encode feedback information [@maybery1986information].
 Further work is necessary to determine whether this goal-directed evaluation of options' usefulness during selection contributes to the active advantage among high WMC individuals.
 
 These findings offer a new perspective on TI research, which heretofore has focused on experimenter-designed (and somewhat artisanal) training sequences.
 This ignores people's ability to gather information during knowledge formation and, as demonstrated here, can underestimate the efficiency of learning when control is possible [@Gureckis-2012-PPS].
 Morever, the present findings have implications for the value of active control in relational learning more generally.
-In particular, the opportunity to select data may not confer an integrative encoding advantage if a person is unable to bring to mind related experiences.
+The opportunity to select data may not enhance integrative encoding if a person is unable to bring to mind related experiences.
 For those individuals, active learning may be most effective in concert with memory aids that support comparison and integration [@son2011connecting].
 
 Finally, it is important to note that participants were aware that there was an underlying hierarchy to be learned.
 Awareness influences strategy use in TI [@smith2005declarative] and it is unknown how active control might affect performance in its absence.
-It is likely that active control enhances elemental encoding in such conditions, perhaps due to the mere opportunity for volitional control [@murty2015simple] or additional metacognitive processing [e.g., retrieval practice, @kornell2015retrieval].
-An intriguing further possibility is that active control increases the likelihood of becoming aware of the hierarchy by focusing attention on abstract relationships across study episodes [@henriksson2016learning].
-This would lend support to the broader notion that active learning not only enriches memory for experienced materials, but also fosters the  discovery of abstract knowledge.
+It is likely that active study enhances elemental encoding in such conditions, perhaps due to the mere opportunity for volitional control [@murty2015simple] or additional metacognitive processing [e.g., retrieval practice, @kornell2015retrieval].
+An intriguing further possibility is that active control increases the likelihood of becoming aware of the hierarchy by directing attention to abstract relationships across study episodes [@henriksson2016learning].
+This would lend support to the broader notion that active learning not only enriches memory for experienced materials, but also fosters self-directed discovery of abstract knowledge.
 
 
 <!-- # Author Contributions -->
@@ -1417,9 +1405,6 @@ and in the retest (active: *M* = `r desc.acc_endpoint[with(desc.acc_endpoint, co
 Accuracy declined from the first test to the second test in both the active condition (`r mcstrOR(mc.acc_endpoint, OR.acc_endpoint, 'test - retest | active')`)
 and the passive condition (`r mcstrOR(mc.acc_endpoint, OR.acc_endpoint, 'test - retest | yoked')`).
 
-```{r fig.cap='Test accuracy on endpoint trials as a function of inferential distance and test session, following a median split on working memory capacity (operation span scores). \\label{fig_acc_endpoint}', fig.height=4, fig.width=6}
-print(plt.acc_endpoint)
-```
 
 Inferential distance was unrelated to accuracy in both the active (`r mcstrOR(mc.acc_endpoint, OR.acc_endpoint, 'distance | active')`) and the passive condition (`r mcstrOR(mc.acc_endpoint, OR.acc_endpoint, 'distance | yoked')`), indicating an absence of a symbolic distance effect.
 Operation span scores were positively related to performance in the active condition (`r mcstrOR(mc.acc_endpoint, OR.acc_endpoint, 'ospan | active')`)
@@ -1428,4 +1413,8 @@ Thus, test performance largely followed the same pattern as for trials that did 
 Figure \ref{fig_acc_endpoint} shows accuracy on endpoint trials following a median split on operation span scores.
 Notably, performance is relatively high across all conditions (even among lower WMC participants), consistent with the use of alternative strategies in order to judge the rank of endpoint items.
 
+
+```{r fig.cap='Test accuracy on endpoint trials as a function of inferential distance and test session, following a median split on working memory capacity (operation span scores). \\label{fig_acc_endpoint}', fig.height=4, fig.width=6}
+print(plt.acc_endpoint)
+```
 
