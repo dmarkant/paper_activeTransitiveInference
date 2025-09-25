@@ -1317,6 +1317,8 @@ Control over the selection of premise pairs improved performance relative to pas
 Symbolic distance effects observed in the active condition strongly imply that this benefit resulted from enhanced integrative encoding, such that active learners relied on an integrated representation of the hierarchy rather than sequential reactivation of premise pairs at test [@acuna2002cognitive; @zeithamova2012hippocampus].
 The absence of such effects following passive study suggests that integrative encoding was less prevalent when the same participants lacked the opportunity to select data.
 
+<!-- Why is there a deficit from active control for low WMC participants? -->
+
 Active control did not benefit all learners, however, as working memory capacity strongly predicted accuracy in the active condition.
 Among higher WMC participants, active control produced a ~10% initial advantage over passive study (increasing past 20% in the retest) and sustained performance across sessions.
 WMC was unrelated to accuracy in the passive condition, a finding that conflicts with reports that WMC moderates TI under experimenter-controlled conditions [e.g., @libben2008role].
@@ -1345,7 +1347,7 @@ These findings offer a new perspective on TI research, which heretofore has focu
 This ignores people's ability to gather information during knowledge formation and, as demonstrated here, can underestimate the efficiency of learning when control is possible [@Gureckis-2012-PPS].
 Moreover, the present findings have implications for the value of active control in relational learning more generally.
 The opportunity to select data may not enhance integrative encoding if a person is unable to bring to mind related experiences.
-For those individuals, active learning may be most effective in concert with memory aids that support comparison and integration [@son2011connecting].
+For those individuals, active learning may be most effective in concert with memory aids that support comparison and integration [@eglington2018retrieval; @son2011connecting].
 
 Finally, it is important to note that participants were aware that there was an underlying hierarchy to be learned.
 Awareness influences strategy use in TI [@smith2005declarative] and it is unknown how active control might affect performance in its absence.
